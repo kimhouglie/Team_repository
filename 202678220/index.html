@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>응급환자 운송 타이쿤 — 3D BFS 경로 탐색 시뮬레이터</title>
+<title>응급환자 운송 타이쿤 v2 — 3D 도시 확장 &amp; BFS 경로 시뮬레이터</title>
 <style>
   :root {
     --blue-deepest: #07101d;
     --blue-dark: #0d1d31;
-    --blue-panel: rgba(13, 29, 49, 0.90);
     --blue-mid: #183456;
     --blue-light: #285282;
     --cyan-bfs: #38bdf8;
@@ -48,7 +47,6 @@
     cursor: crosshair;
   }
 
-  /* Common Brown & Dark Blue Frame */
   .panel-frame {
     background: linear-gradient(160deg, rgba(16, 35, 58, 0.93) 0%, rgba(10, 22, 38, 0.95) 65%, rgba(46, 29, 21, 0.92) 100%);
     border: 2px solid var(--brown-warm);
@@ -65,7 +63,7 @@
     position: fixed;
     top: 16px;
     left: 16px;
-    width: 345px;
+    width: 348px;
     padding: 14px 16px;
     z-index: 20;
     pointer-events: auto;
@@ -105,8 +103,9 @@
   }
 
   .algo-badge {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 6px;
     background: linear-gradient(90deg, var(--brown-dark), var(--blue-mid));
     border: 1px solid var(--brown-light);
@@ -116,8 +115,6 @@
     font-weight: 700;
     color: var(--cyan-bfs);
     margin-bottom: 10px;
-    width: 100%;
-    justify-content: space-between;
   }
 
   .algo-badge span.tag {
@@ -126,6 +123,7 @@
     padding: 2px 6px;
     border-radius: 5px;
     font-size: 10.5px;
+    white-space: nowrap;
   }
 
   .telemetry-grid {
@@ -149,7 +147,7 @@
   }
 
   .stat-val {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 800;
     color: var(--text-main);
     font-variant-numeric: tabular-nums;
@@ -163,7 +161,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(56, 35, 26, 0.75);
+    background: rgba(56, 35, 26, 0.78);
     border: 1px solid var(--brown-light);
     border-radius: 8px;
     padding: 7px 10px;
@@ -202,7 +200,7 @@
     position: fixed;
     top: 16px;
     right: 16px;
-    width: 295px;
+    width: 300px;
     padding: 13px 14px;
     z-index: 20;
   }
@@ -267,6 +265,12 @@
     transform: translateX(-2px);
     background: rgba(40, 26, 20, 0.9);
     border-color: var(--gold);
+  }
+
+  .dispatch-card.hospital-route {
+    border-color: rgba(16, 185, 129, 0.65);
+    border-left: 4px solid var(--green-ok);
+    background: rgba(12, 42, 46, 0.88);
   }
 
   .dispatch-card img {
@@ -364,7 +368,7 @@
     border: 1.5px solid var(--brown-warm);
     padding: 7px 14px;
     border-radius: 12px;
-    min-width: 148px;
+    min-width: 146px;
   }
 
   .currency-icon {
@@ -510,13 +514,13 @@
   #shopModalOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(5, 11, 20, 0.76);
+    background: rgba(5, 11, 20, 0.78);
     backdrop-filter: blur(6px);
     z-index: 50;
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 18px;
   }
 
   #shopModalOverlay.open {
@@ -525,10 +529,10 @@
 
   #shopModal {
     width: 100%;
-    max-width: 860px;
-    max-height: 88vh;
+    max-width: 940px;
+    max-height: 90vh;
     overflow-y: auto;
-    padding: 22px 24px;
+    padding: 20px 22px;
     background: linear-gradient(155deg, #10233b 0%, #0b1829 55%, #2d1c14 100%);
     border: 2.5px solid var(--gold);
     border-radius: 18px;
@@ -539,9 +543,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 14px;
+    padding-bottom: 12px;
     border-bottom: 1.5px solid rgba(184, 139, 109, 0.38);
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
   .shop-title-wrap {
@@ -551,20 +555,20 @@
   }
 
   .shop-title-wrap img {
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
     border-radius: 10px;
     border: 2px solid var(--gold);
   }
 
   .shop-title-wrap h2 {
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 900;
     color: var(--gold-bright);
   }
 
   .shop-title-wrap p {
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--text-muted);
     margin-top: 2px;
   }
@@ -573,7 +577,7 @@
     background: var(--brown-dark);
     border: 1.5px solid var(--brown-light);
     color: #fff;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 800;
     padding: 7px 14px;
     border-radius: 9px;
@@ -588,10 +592,10 @@
   .upgrade-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
+    gap: 12px;
   }
 
-  @media (max-width: 720px) {
+  @media (max-width: 760px) {
     .upgrade-grid { grid-template-columns: 1fr; }
     #hudTopRight { display: none; }
   }
@@ -599,12 +603,12 @@
   .upgrade-card {
     background: linear-gradient(160deg, rgba(18, 39, 64, 0.9) 0%, rgba(42, 26, 19, 0.88) 100%);
     border: 1.5px solid var(--brown-warm);
-    border-radius: 14px;
-    padding: 15px;
+    border-radius: 13px;
+    padding: 13px 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 10px;
+    gap: 9px;
     transition: border-color 0.15s, transform 0.15s;
   }
 
@@ -613,15 +617,20 @@
     transform: translateY(-2px);
   }
 
+  .upgrade-card.highlight-new {
+    border-color: var(--cyan-bfs);
+    box-shadow: inset 0 0 14px rgba(56, 189, 248, 0.12);
+  }
+
   .upg-top {
     display: flex;
-    gap: 12px;
+    gap: 11px;
     align-items: flex-start;
   }
 
   .upg-top img {
-    width: 50px;
-    height: 50px;
+    width: 46px;
+    height: 46px;
     border-radius: 10px;
     border: 1.5px solid var(--brown-light);
     background: var(--blue-dark);
@@ -640,7 +649,7 @@
   }
 
   .upg-title-row h3 {
-    font-size: 15px;
+    font-size: 14.5px;
     font-weight: 800;
     color: #fff;
   }
@@ -657,30 +666,30 @@
   }
 
   .upg-desc {
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--text-muted);
-    line-height: 1.45;
-    margin-top: 5px;
+    line-height: 1.42;
+    margin-top: 4px;
   }
 
   .upg-effect {
     background: rgba(7, 16, 29, 0.72);
     border: 1px solid rgba(184, 139, 109, 0.3);
     border-radius: 8px;
-    padding: 7px 10px;
-    font-size: 11.5px;
+    padding: 6px 9px;
+    font-size: 11.2px;
     color: var(--gold-bright);
     font-weight: 700;
   }
 
   .upg-buy-btn {
     width: 100%;
-    padding: 9px 12px;
-    border-radius: 10px;
+    padding: 8px 12px;
+    border-radius: 9px;
     border: 1.5px solid var(--gold);
     background: linear-gradient(90deg, var(--brown-mid), var(--blue-mid));
     color: #fff;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 800;
     cursor: pointer;
     display: flex;
@@ -744,13 +753,13 @@
     <img src="./img/shop_emblem.png" alt="Emblem" onerror="this.style.display='none'" />
     <div>
       <div class="brand-title">응급환자 운송 타이쿤</div>
-      <div class="brand-sub">3D 도시 너비 우선 탐색(BFS) 관제 시스템</div>
+      <div class="brand-sub">3D 도시 확장 &amp; BFS 경로 관제 시스템</div>
     </div>
   </div>
 
   <div class="algo-badge">
     <span id="algoModeText">기본 BFS (무가중치 탐색)</span>
-    <span class="tag" id="algoTierTag">STAGE 1</span>
+    <span class="tag" id="algoTierTag">구역 8×8 · 병원 1곳</span>
   </div>
 
   <div class="telemetry-grid">
@@ -759,29 +768,29 @@
       <div class="stat-val cyan" id="statVisited">0 노드</div>
     </div>
     <div class="stat-box">
-      <div class="stat-label">중복 탐색 / 연산 지연</div>
+      <div class="stat-label">중복 탐색 / 연산 효율</div>
       <div class="stat-val warn" id="statRedundant">0 회</div>
     </div>
     <div class="stat-box">
-      <div class="stat-label">최단 경로 거리 / 예상 시간</div>
+      <div class="stat-label">최단 경로 / 예상 소요</div>
       <div class="stat-val" id="statPathInfo">- 칸 / -초</div>
     </div>
     <div class="stat-box">
-      <div class="stat-label">누적 환자 이송 완료</div>
-      <div class="stat-val gold" id="statRescued">0 명</div>
+      <div class="stat-label">이송 완료 / 돌파 충돌</div>
+      <div class="stat-val gold" id="statRescued">0 명 · 0 회</div>
     </div>
   </div>
 
   <div class="status-banner">
     <div class="pulse-dot" id="statusDot"></div>
-    <span id="statusText">도시의 구역이나 응급 환자를 왼쪽 클릭하세요!</span>
+    <span id="statusText">소형 도심(8×8)에서 시작! 구역이나 환자를 클릭하세요.</span>
   </div>
 </div>
 
 <!-- Top-Right Emergency Queue & Legend -->
 <div id="hudTopRight" class="panel-frame">
   <div class="section-header">
-    <span>🚨 실시간 응급 호출 (클릭 시 즉시 탐색)</span>
+    <span>🚨 실시간 응급 호출 &amp; 이송</span>
     <div class="tool-btns">
       <button class="mini-btn" id="btnSound" title="효과음 켜기/끄기">🔊 ON</button>
       <button class="mini-btn" id="btnResetCam" title="3D 카메라 각도 초기화">🎥 시점</button>
@@ -791,10 +800,10 @@
   <div id="dispatchList"></div>
 
   <div class="legend-grid">
-    <div class="legend-item"><img src="./img/hospital.png" alt="" /><span>중앙 병원 (이송지)</span></div>
+    <div class="legend-item"><img src="./img/hospital.png" alt="" /><span>응급 병원 (이송지)</span></div>
     <div class="legend-item"><img src="./img/patient.png" alt="" /><span>응급 환자 호출</span></div>
     <div class="legend-item"><img src="./img/slope.png" alt="" /><span>경사 구역 (속도↓)</span></div>
-    <div class="legend-item"><img src="./img/traffic.png" alt="" /><span>정체 방해요소 (속도↓)</span></div>
+    <div class="legend-item"><img src="./img/pedestrian.png" alt="" /><span>보행자·라바콘 (충돌!)</span></div>
     <div class="legend-item"><span class="swatch" style="background:#38bdf8;"></span><span>BFS 큐 탐색 파동</span></div>
     <div class="legend-item"><span class="swatch" style="background:#ffd166;"></span><span>도출된 최단 경로</span></div>
   </div>
@@ -809,13 +818,13 @@
       <div class="currency-icon cash">$</div>
       <div class="currency-meta">
         <span class="lbl">보유 의료 자금</span>
-        <span class="amt" id="uiCash">$500</span>
+        <span class="amt" id="uiCash">$550</span>
       </div>
     </div>
 
     <button id="btnOpenShop">
       <img src="./img/shop_emblem.png" alt="Shop" onerror="this.style.display='none'" />
-      <span>상점 · 알고리즘 업그레이드</span>
+      <span>상점 · 도시 확장 &amp; 업그레이드</span>
       <span id="shopBadge">NEW</span>
     </button>
 
@@ -823,14 +832,14 @@
       <div class="currency-icon rp">RP</div>
       <div class="currency-meta">
         <span class="lbl">BFS 연구 데이터</span>
-        <span class="amt" id="uiRP">80 RP</span>
+        <span class="amt" id="uiRP">90 RP</span>
       </div>
     </div>
   </div>
 
   <div class="controls-strip">
-    <span><span class="key-cap">좌클릭</span>BFS 탐색 시각화 후 즉시 이동</span>
-    <span><span class="key-cap">우클릭 드래그</span>3D 카메라 회전·각도</span>
+    <span><span class="key-cap">좌클릭</span>BFS 탐색 후 즉시 이동</span>
+    <span><span class="key-cap">우클릭 드래그</span>3D 카메라 회전</span>
     <span><span class="key-cap">휠 누르기 유지</span>전술뷰 그리드 미로</span>
   </div>
 </div>
@@ -842,8 +851,8 @@
       <div class="shop-title-wrap">
         <img src="./img/shop_emblem.png" alt="Shop" onerror="this.style.display='none'" />
         <div>
-          <h2>응급 관제 센터 · 연구 및 장비 상점</h2>
-          <p>환자 이송 자금($)과 BFS 탐색 연구 데이터(RP)로 구급차 성능과 탐색 알고리즘을 고도화하세요.</p>
+          <h2>응급 관제 센터 · 도시 확장 및 알고리즘 연구소</h2>
+          <p>소형 도심에서 시작해 도시 구역과 응급 병원을 확장하고, BFS 알고리즘과 구급차 성능을 업그레이드하세요.</p>
         </div>
       </div>
       <button id="btnCloseShop">닫기 (ESC)</button>
@@ -858,7 +867,7 @@
   'use strict';
 
   // =========================================================================
-  // 1. AUDIO SYNTHESIZER (Dependency-free Web Audio API)
+  // 1. AUDIO SYNTHESIZER (Web Audio API)
   // =========================================================================
   let soundEnabled = true;
   let audioCtx = null;
@@ -880,10 +889,19 @@
     } catch (e) {}
   }
 
+  function playCrashSound(isPedestrian = false) {
+    playTone(135, 'sawtooth', 0.14, 0.09, 0);
+    playTone(85, 'square', 0.18, 0.07, 0.04);
+    if (isPedestrian) {
+      playTone(680, 'sine', 0.08, 0.06, 0.06);
+      playTone(920, 'sine', 0.11, 0.06, 0.13);
+    }
+  }
+
   // =========================================================================
-  // 2. PRELOAD IMAGE ASSETS FROM ./img/ (with graceful fallback)
+  // 2. PRELOAD IMAGE ASSETS FROM ./img/
   // =========================================================================
-  const assetNames = ['ambulance', 'hospital', 'patient', 'slope', 'traffic', 'shop_emblem'];
+  const assetNames = ['ambulance', 'hospital', 'patient', 'slope', 'traffic', 'shop_emblem', 'pedestrian', 'expand_map'];
   const sprites = {};
   assetNames.forEach(name => {
     const img = new Image();
@@ -894,13 +912,16 @@
   });
 
   // =========================================================================
-  // 3. GAME STATE & UPGRADES CONFIGURATION
+  // 3. GAME STATE & UPGRADES CONFIGURATION (INCLUDING MAP EXPANSION & HOSPITALS)
   // =========================================================================
   const state = {
-    cash: 500,
-    rp: 80,
+    cash: 550,
+    rp: 90,
     rescuedCount: 0,
+    crashCount: 0,
     upgrades: {
+      expansion: 0,  // Max 2: 0 = 8x8, 1 = 12x12, 2 = 16x16
+      hospitals: 0,  // Max 3: 0 = 1 hospital, 1 = 2 hospitals, 2 = 3 hospitals, 3 = 4 hospitals
       speed: 0,      // Max 4: 차량 속도 업글
       reward: 0,     // Max 4: 돈/보상 업글
       visited: 0,    // Max 3: BFS 방문기록 시스템 추가
@@ -908,23 +929,82 @@
     }
   };
 
+  function getActiveMapSize() {
+    return [8, 12, 16][state.upgrades.expansion] || 8;
+  }
+
+  const HOSPITAL_SITES = [
+    { gx: 2,  gy: 2,  name: '중앙 권역 응급의료센터', minExpansion: 0 },
+    { gx: 6,  gy: 6,  name: '브라운 힐 제2 응급분원', minExpansion: 0 },
+    { gx: 10, gy: 4,  name: '동부 테라스 메디컬 센터', minExpansion: 1 },
+    { gx: 13, gy: 13, name: '남동 광역 외상센터', minExpansion: 2 }
+  ];
+
   const UPGRADE_DEFS = [
+    {
+      key: 'expansion',
+      title: '도시 관제 구역 확장 (Map Expansion)',
+      highlight: true,
+      icon: './img/expand_map.png',
+      maxLevel: 2,
+      desc: '작은 소형 도심(8×8)에서 시작하여 인접 브라운 언덕과 고지대 능선까지 관할 구역을 단계적으로 넓힙니다. 넓은 구역일수록 고액 응급 호출이 발생합니다.',
+      costs: [
+        { cash: 260, rp: 45 },
+        { cash: 620, rp: 110 }
+      ],
+      effectText: (lvl) => {
+        const labels = [
+          '현재: 8×8 소형 도심 → Lv.1: 12×12 중형 메트로 구역 개방',
+          '현재: 12×12 중형 구역 → Lv.2: 16×16 광역 메가시티 전체 개방',
+          '최고 단계 달성: 16×16 전체 도시 관제 구역 개방 완료'
+        ];
+        return labels[lvl];
+      }
+    },
+    {
+      key: 'hospitals',
+      title: '응급 의료 네트워크 · 병원 추가 개원',
+      highlight: true,
+      icon: './img/hospital.png',
+      maxLevel: 3,
+      desc: '도심 각 권역에 새로운 응급 병원을 개원합니다. 환자를 태운 뒤 가장 가까운 병원으로 즉시 이송할 수 있어 골든타임을 크게 단축합니다.',
+      costs: [
+        { cash: 300, rp: 50 },
+        { cash: 580, rp: 105 },
+        { cash: 950, rp: 180 }
+      ],
+      effectText: (lvl) => {
+        const labels = [
+          '현재: 병원 1곳 → Lv.1: 제2병원 개원 (브라운 힐 분원 6,6)',
+          '현재: 병원 2곳 → Lv.2: 제3병원 개원 (동부 테라스 10,4 · 맵확장 Lv.1 필요)',
+          '현재: 병원 3곳 → Lv.3: 제4병원 개원 (남동 외상센터 13,13 · 맵확장 Lv.2 필요)',
+          '최고 단계 달성: 4개 권역 응급 병원 네트워크 완전 가동'
+        ];
+        return labels[lvl];
+      },
+      customCheck: (lvl) => {
+        const nextSite = HOSPITAL_SITES[lvl + 1];
+        if (nextSite && state.upgrades.expansion < nextSite.minExpansion) {
+          return `도시 확장 Lv.${nextSite.minExpansion} 필요`;
+        }
+        return null;
+      }
+    },
     {
       key: 'speed',
       title: '고출력 터보 엔진 & 서스펜션',
-      subtitle: '차량 속도 업그레이드',
       icon: './img/ambulance.png',
       maxLevel: 4,
       desc: '구급차의 기본 주행 속도를 대폭 향상시키고 오르막 경사 구역에서의 토크 손실을 줄입니다.',
       costs: [
-        { cash: 220, rp: 30 },
-        { cash: 420, rp: 65 },
-        { cash: 750, rp: 120 },
-        { cash: 1250, rp: 200 }
+        { cash: 200, rp: 30 },
+        { cash: 400, rp: 65 },
+        { cash: 720, rp: 120 },
+        { cash: 1200, rp: 195 }
       ],
       effectText: (lvl) => {
-        const curSpd = (2.6 + lvl * 0.85).toFixed(2);
-        const nxtSpd = (2.6 + (lvl + 1) * 0.85).toFixed(2);
+        const curSpd = (2.65 + lvl * 0.85).toFixed(2);
+        const nxtSpd = (2.65 + (lvl + 1) * 0.85).toFixed(2);
         return lvl < 4
           ? `주행 속도: ${curSpd} 칸/초 → ${nxtSpd} 칸/초`
           : `최고 단계 달성 (주행 속도: ${curSpd} 칸/초)`;
@@ -933,35 +1013,33 @@
     {
       key: 'reward',
       title: '중증 응급 의료 수가 & 연구 지원',
-      subtitle: '이송 자금 및 RP 보상 업그레이드',
-      icon: './img/hospital.png',
+      icon: './img/patient.png',
       maxLevel: 4,
-      desc: '환자를 중앙 병원으로 무사히 이송할 때 획득하는 의료 자금($)과 BFS 연구 데이터(RP)를 증가시킵니다.',
+      desc: '환자를 응급 병원으로 이송할 때 획득하는 의료 자금($)과 BFS 연구 데이터(RP) 보상을 증가시킵니다.',
       costs: [
-        { cash: 250, rp: 40 },
-        { cash: 480, rp: 80 },
-        { cash: 850, rp: 145 },
-        { cash: 1400, rp: 230 }
+        { cash: 230, rp: 35 },
+        { cash: 450, rp: 75 },
+        { cash: 820, rp: 140 },
+        { cash: 1350, rp: 220 }
       ],
       effectText: (lvl) => {
         const mult = (1 + lvl * 0.45).toFixed(2);
         const nxtMult = (1 + (lvl + 1) * 0.45).toFixed(2);
         return lvl < 4
-          ? `보상 배율: x${mult} → x${nxtMult} (긴급 보너스 포함)`
+          ? `보상 배율: x${mult} → x${nxtMult}`
           : `최고 단계 달성 (보상 배율: x${mult})`;
       }
     },
     {
       key: 'visited',
       title: 'BFS 방문기록 시스템 (Visited Array)',
-      subtitle: '중복 탐색 차단 & 탐색 트리 시각화',
       icon: './img/shop_emblem.png',
       maxLevel: 3,
-      desc: 'Lv.1: 방문 배열(visited[]) 도입으로 중복 노드 재방문 제거 및 탐색 파동 2배 가속 | Lv.2: 부모 역추적 포인터 표시 및 노드당 RP 추가 획득 | Lv.3: 각 구역의 BFS 깊이(거리) 실시간 매핑',
+      desc: 'Lv.1: 방문 배열(visited[]) 도입으로 중복 노드 재방문 제거 및 탐색 파동 2배 가속 | Lv.2: 부모 역추적 포인터 표시 및 탐색 RP 보너스 | Lv.3: 각 구역의 BFS 깊이(거리) 실시간 매핑',
       costs: [
-        { cash: 200, rp: 50 },
-        { cash: 460, rp: 110 },
-        { cash: 900, rp: 190 }
+        { cash: 190, rp: 45 },
+        { cash: 440, rp: 105 },
+        { cash: 860, rp: 185 }
       ],
       effectText: (lvl) => {
         const labels = [
@@ -976,14 +1054,13 @@
     {
       key: 'obstacles',
       title: '다중 방해요소 및 경사도 가중치 계산',
-      subtitle: '경사 감속·정체 구역 지능형 우회',
       icon: './img/slope.png',
       maxLevel: 3,
-      desc: '경사 구역에서는 구급차 속도가 크게 느려집니다. Lv.1: 경사도(Elevation Slope) 감속 페널티 계산 | Lv.2: 도로 정체·공사 방해요소 통합 가중치 계산 | Lv.3: 경사 감속 완화 서스펜션 제어',
+      desc: '경사 구역에서는 구급차 속도가 크게 느려집니다. Lv.1: 경사도 감속 페널티 계산 및 평지 우회 | Lv.2: 도로 정체·공사 방해요소 통합 가중치 계산 | Lv.3: 경사 감속 페널티 30% 경감',
       costs: [
-        { cash: 240, rp: 55 },
-        { cash: 520, rp: 120 },
-        { cash: 980, rp: 210 }
+        { cash: 220, rp: 50 },
+        { cash: 490, rp: 115 },
+        { cash: 940, rp: 205 }
       ],
       effectText: (lvl) => {
         const labels = [
@@ -998,43 +1075,38 @@
   ];
 
   // =========================================================================
-  // 4. 3D CITY MAP DESIGN (16x16 with Elevations, Sloped Ramps, Obstacles)
+  // 4. MASTER 16x16 3D CITY MAP (Designed so 8x8, 12x12, 16x16 are all cohesive!)
   // =========================================================================
-  const GRID_W = 16;
-  const GRID_H = 16;
+  const MAX_GRID_W = 16;
+  const MAX_GRID_H = 16;
   const TILE_SIZE = 44;
-
-  // Tile types:
-  // 'road'     : flat road at tile.elev (0, 1, or 2)
-  // 'slope'    : inclined ramp connecting elevLow -> elevHigh along slopeDir ('N','S','E','W')
-  // 'building' : 3D building block (non-traversable)
-  // 'hospital' : Central Hospital at (2, 2)
   const grid = [];
 
   function initCityMap() {
-    for (let y = 0; y < GRID_H; y++) {
+    for (let y = 0; y < MAX_GRID_H; y++) {
       const row = [];
-      for (let x = 0; x < GRID_W; x++) {
+      for (let x = 0; x < MAX_GRID_W; x++) {
         row.push({
           gx: x,
           gy: y,
           type: 'building',
           elev: 0,
-          slopeDir: null, // direction going UP ('N': gy-1, 'S': gy+1, 'E': gx+1, 'W': gx-1)
+          slopeDir: null,
           elevLow: 0,
           elevHigh: 0,
-          bHeight: 38 + ((x * 17 + y * 31) % 52),
-          bStyle: (x + y) % 2, // 0: brown brick, 1: dark blue glass
+          bHeight: 38 + ((x * 19 + y * 29) % 48),
+          bStyle: (x + y) % 2,
           obstacle: false,
-          districtName: '도심 구역',
+          districtName: '도심 빌딩 구역',
           screenPoly: null,
-          depth: 0
+          depth: 0,
+          opacity: 1.0
         });
       }
       grid.push(row);
     }
 
-    const setRoad = (x, y, elev = 0, district = '저지대 블루 애비뉴', obstacle = false) => {
+    const setRoad = (x, y, elev = 0, district = '블루 도심 대로', obstacle = false) => {
       const t = grid[y][x];
       t.type = 'road';
       t.elev = elev;
@@ -1053,90 +1125,130 @@
       t.obstacle = false;
     };
 
-    // --- A. Lowland Perimeter & Main Flat Bypass Roads (elev = 0, Dark Blue Asphalt) ---
-    for (let x = 1; x <= 14; x++) {
+    // --- SECTOR 1: 8x8 Starter City (0..7 x 0..7) ---
+    for (let x = 1; x <= 7; x++) {
       setRoad(x, 1, 0, '북부 블루 순환로');
-      setRoad(x, 14, 0, '남부 강변 우회로');
+      setRoad(x, 7, 0, '남부 블루 순환로');
+    }
+    for (let y = 1; y <= 7; y++) {
+      setRoad(1, y, 0, '서부 메디컬 대로');
+      setRoad(4, y, 0, '중앙 청색 대로');
+    }
+    setRoad(2, 3, 0, '중앙 병원 진입로');
+    setRoad(3, 2, 0, '중앙 병원 동측로');
+    setRoad(2, 4, 0, '서측 연결 골목');
+    setRoad(3, 4, 0, '중앙 교차로');
+
+    // Starter Elevated Brown Terrace (6,4), (6,5), (6,6) at elev=1 + Ramps!
+    setSlope(5, 4, 'E', 0, 1, '브라운 힐 서측 경사로 (경사 18%)');
+    setRoad(6, 4, 1, '브라운 힐 북측 언덕 (고도 15m)');
+    setRoad(6, 5, 1, '브라운 힐 전망길 (고도 15m)');
+    setRoad(6, 6, 1, '브라운 힐 남측 부지 (고도 15m)');
+    setSlope(5, 6, 'E', 0, 1, '브라운 힐 남서 경사로 (경사 18%)');
+    // Also connect (4,6) -> (5,6)
+    setRoad(4, 6, 0, '남부 경사 진입로');
+    // Road along x=7 for future 12x12 connection
+    setRoad(7, 1, 0, '동부 경계 순환로');
+    setRoad(7, 2, 0, '동부 경계 순환로');
+    setRoad(7, 3, 0, '동부 경계 순환로');
+
+    // --- SECTOR 2: 12x12 Metro Expansion (8..11) ---
+    for (let x = 7; x <= 11; x++) {
+      setRoad(x, 1, 0, '북부 메트로 순환로');
+      setRoad(x, 11, 0, '남부 메트로 대로');
+    }
+    for (let y = 1; y <= 11; y++) {
+      setRoad(11, y, 0, '동부 메트로 순환로');
+    }
+    for (let y = 7; y <= 11; y++) {
+      setRoad(1, y, 0, '서부 외곽 대로');
+      setRoad(4, y, 0, '중앙 남부 대로');
+    }
+    for (let x = 1; x <= 7; x++) {
+      setRoad(x, 11, 0, '남부 강변 우회로');
+    }
+    // Mid-level Brown Terrace Expansion (x: 8..10, y: 4..8) at elev=1
+    setRoad(8, 2, 0, '북부 연결로');
+    setSlope(8, 3, 'S', 0, 1, '테라스 북부 경사로 (경사 20%)');
+    setRoad(8, 4, 1, '동부 브라운 테라스 (고도 15m)');
+    setRoad(9, 4, 1, '동부 브라운 테라스 (고도 15m)');
+    setRoad(10, 4, 1, '동부 테라스 광장 (고도 15m)');
+    setRoad(8, 5, 1, '테라스 중앙길 (고도 15m)');
+    setRoad(10, 5, 1, '테라스 동측길 (고도 15m)');
+    setRoad(8, 6, 1, '테라스 남측길 (고도 15m)');
+    setRoad(9, 6, 1, '테라스 남측길 (고도 15m)');
+    setRoad(10, 6, 1, '테라스 남측길 (고도 15m)');
+    // Connect Starter Terrace (6,5) <-> (7,5) <-> (8,5) at elev=1!
+    setRoad(7, 5, 1, '브라운 스카이 브릿지 (고도 15m)');
+    // South descent ramp from (9,6) elev 1 -> [slope at 9,7 going N 0->1] -> (9,8)..(9,11)
+    setSlope(9, 7, 'N', 0, 1, '테라스 남부 경사로 (경사 18%)');
+    for (let y = 8; y <= 11; y++) setRoad(9, y, 0, '남부 연결 대로');
+
+    // --- SECTOR 3: 16x16 Mega-City Expansion (12..15) ---
+    for (let x = 11; x <= 15; x++) {
+      setRoad(x, 1, 0, '북동 외곽 고속로');
+      setRoad(x, 14, 0, '남동 외곽 순환로');
     }
     for (let y = 1; y <= 14; y++) {
-      setRoad(1, y, 0, '서부 메디컬 대로');
-      setRoad(14, y, 0, '동부 외곽 순환로');
+      setRoad(15, y, 0, '동부 최외곽 순환로');
     }
-    // Additional lowland avenues
-    for (let x = 1; x <= 6; x++) setRoad(x, 5, 0, '중앙 서측 평지로');
-    for (let y = 1; y <= 8; y++) setRoad(5, y, 0, '청색 관제 대로');
-    for (let x = 1; x <= 5; x++) setRoad(x, 9, 0, '남서 하부 대로');
-    for (let y = 9; y <= 14; y++) setRoad(8, y, 0, '중앙 남부 연결로');
-    for (let x = 8; x <= 14; x++) setRoad(x, 11, 0, '동남 평지 우회로');
-
-    // --- B. Mid-Elevation Brown Terrace Plateau (elev = 1, Warm Brown District) ---
-    // Central-Mid Terrace (x: 7..10, y: 4..8)
-    for (let y = 4; y <= 8; y++) {
-      for (let x = 7; x <= 10; x++) {
-        if ((x === 8 || x === 9) && (y === 5 || y === 7)) continue; // keep some buildings on plateau
-        setRoad(x, y, 1, '브라운 테라스 언덕 (고도 15m)');
-      }
+    for (let y = 11; y <= 14; y++) {
+      setRoad(1, y, 0, '남서 외곽 대로');
+      setRoad(9, y, 0, '남부 중앙 대로');
     }
-    // South-West Brown Hill (x: 3..6, y: 11..12)
-    setRoad(3, 11, 1, '남서 황토 언덕길 (고도 15m)');
-    setRoad(4, 11, 1, '남서 황토 언덕길 (고도 15m)');
-    setRoad(5, 11, 1, '남서 황토 언덕길 (고도 15m)');
-    setRoad(6, 11, 1, '남서 황토 언덕길 (고도 15m)');
-
-    // --- C. Highland Ridge (elev = 2, Deep Chestnut Ridge) ---
-    // North-East Highland (x: 12..13, y: 3..7)
+    for (let x = 1; x <= 11; x++) {
+      setRoad(x, 14, 0, '최남단 강변 순환로');
+    }
+    // Highland Ridge (elev = 2, Deep Chestnut Ridge) at x: 13..14, y: 3..7
+    setSlope(12, 5, 'E', 0, 1, '고지대 1차 진입 경사로 (경사 22%)');
+    setSlope(13, 5, 'E', 1, 2, '고지대 2차 급경사로 (경사 26%)');
     for (let y = 3; y <= 7; y++) {
-      setRoad(12, y, 2, '고지대 전망 능선 (고도 30m)');
-      if (y !== 5) setRoad(13, y, 2, '고지대 전망 능선 (고도 30m)');
+      setRoad(14, y, 2, '고지대 전망 능선 (고도 30m)');
     }
+    setRoad(13, 3, 2, '북동 전망대 능선 (고도 30m)');
+    setRoad(13, 7, 2, '남동 전망대 능선 (고도 30m)');
+    // Descent ramps from Highland (13,7) elev 2 -> (13,8) slope -> (13,9) elev 1 -> (13,10) slope -> (13,11) elev 0
+    setSlope(13, 8, 'N', 1, 2, '동부 상단 급경사로 (경사 25%)');
+    setRoad(13, 9, 1, '동부 중간 테라스 (고도 15m)');
+    setSlope(13, 10, 'N', 0, 1, '동부 하단 경사로 (경사 18%)');
+    for (let y = 11; y <= 14; y++) setRoad(13, y, 0, '남동 외곽 진입로');
+    setRoad(12, 13, 0, '남동 의료단지 진입로');
+    setRoad(14, 13, 0, '남동 의료단지 동측로');
 
-    // --- D. Sloped Ramps Connecting Elevations (경사 구역) ---
-    // Ramp 1: West approach to Central Terrace (5,6) -> [slope at 6,6 going East 0->1] -> (7,6)
-    setSlope(6, 6, 'E', 0, 1, '중앙 서측 경사로 (경사도 18%)');
-    // Ramp 2: North approach to Central Terrace (8,1)->(8,2)->[slope at 8,3 going South 0->1]->(8,4)
-    setRoad(8, 2, 0, '북부 연결 골목');
-    setSlope(8, 3, 'S', 0, 1, '북부 테라스 경사로 (경사도 20%)');
-    // Ramp 3: South descent from Central Terrace (9,8)->[slope at 9,9 going North 0->1]->(9,10)->(9,11)
-    setSlope(9, 9, 'N', 0, 1, '남부 테라스 경사로 (경사도 18%)');
-    setRoad(9, 10, 0, '남부 연결 골목');
-    // Ramp 4: Terrace (elev 1) up to Highland Ridge (elev 2): (10,5)->[slope at 11,5 going East 1->2]->(12,5)
-    setSlope(11, 5, 'E', 1, 2, '고지대 급경사 진입로 (경사도 26%)');
-    // Ramp 5: Highland Ridge (elev 2) down to East Loop (elev 0) via double ramp:
-    // (13,7) elev 2 -> [slope at 13,8 going North 1->2] -> (13,9) elev 1 -> [slope at 13,10 going North 0->1] -> (13,11) elev 0
-    setSlope(13, 8, 'N', 1, 2, '동부 상단 급경사로 (경사도 25%)');
-    setRoad(13, 9, 1, '동부 중간 전망대 (고도 15m)');
-    setSlope(13, 10, 'N', 0, 1, '동부 하단 경사로 (경사도 18%)');
-    // Ramp 6 & 7: South-West Hill ramps: (2,11) elev 0 -> [slope at 3,11? Let's make (2,11) slope E 0->1] and (7,11) slope W 0->1
-    setSlope(2, 11, 'E', 0, 1, '남서 서측 경사로 (경사도 16%)');
-    setSlope(7, 11, 'W', 0, 1, '남서 동측 경사로 (경사도 16%)');
-
-    // --- E. Traffic / Roadwork Obstacles (방해요소 구역) ---
-    // Placed on select flat avenues so Obstacle Upgrade creates smart rerouting
+    // --- Traffic Congestion Zones ---
     grid[1][6].obstacle = true;
     grid[1][6].districtName = '북부 순환로 (도로 공사 정체)';
-    grid[7][1].obstacle = true;
-    grid[7][1].districtName = '서부 대로 (출근길 교통 정체)';
+    grid[7][2].obstacle = true;
+    grid[7][2].districtName = '동부 경계로 (출근길 정체)';
+    grid[11][6].obstacle = true;
+    grid[11][6].districtName = '동부 메트로 (차량 정체)';
     grid[14][10].obstacle = true;
-    grid[14][10].districtName = '남부 우회로 (차량 사고 정체)';
+    grid[14][10].districtName = '최남단 순환로 (정체 구간)';
 
-    // --- F. Central Hospital at (2, 2) connected to (2,1) & (1,2) ---
-    setRoad(2, 3, 0, '병원 응급 진입로');
-    setRoad(3, 2, 0, '병원 동측 진입로');
-    const hosp = grid[2][2];
-    hosp.type = 'hospital';
-    hosp.elev = 0;
-    hosp.districtName = '중앙 권역 응급의료센터';
-    hosp.obstacle = false;
+    // --- Initial Hospital #1 at (2, 2) ---
+    applyUnlockedHospitals();
 
-    // Give elevated buildings appropriate base elevation so they sit naturally on hills
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
+    // Elevate buildings sitting on terraces/highlands
+    for (let y = 0; y < MAX_GRID_H; y++) {
+      for (let x = 0; x < MAX_GRID_W; x++) {
         const t = grid[y][x];
         if (t.type === 'building') {
-          if (x >= 7 && x <= 10 && y >= 4 && y <= 8) t.elev = 1;
-          else if (x >= 12 && x <= 13 && y >= 3 && y <= 7) t.elev = 2;
+          if (x === 6 && y >= 4 && y <= 6) t.elev = 1;
+          else if (x >= 8 && x <= 10 && y >= 4 && y <= 6) t.elev = 1;
+          else if (x >= 13 && x <= 14 && y >= 3 && y <= 7) t.elev = 2;
         }
       }
+    }
+  }
+
+  function applyUnlockedHospitals() {
+    const count = 1 + state.upgrades.hospitals;
+    for (let i = 0; i < count && i < HOSPITAL_SITES.length; i++) {
+      const site = HOSPITAL_SITES[i];
+      const t = grid[site.gy][site.gx];
+      t.type = 'hospital';
+      t.districtName = site.name;
+      t.obstacle = false;
     }
   }
 
@@ -1145,17 +1257,22 @@
   // =========================================================================
   // 5. GRAPH NEIGHBORS & TERRAIN MOVEMENT COST
   // =========================================================================
+  function isTileUnlocked(gx, gy) {
+    const sz = getActiveMapSize();
+    return gx >= 0 && gx < sz && gy >= 0 && gy < sz;
+  }
+
   function isTraversable(t) {
-    return t && (t.type === 'road' || t.type === 'slope' || t.type === 'hospital');
+    if (!t || !isTileUnlocked(t.gx, t.gy)) return false;
+    return t.type === 'road' || t.type === 'slope' || t.type === 'hospital';
   }
 
   function getElevationAtEdge(tile, dirFromTile) {
     if (tile.type !== 'slope') return tile.elev;
-    // dirFromTile is 'N','S','E','W' edge of tile
     if (tile.slopeDir === dirFromTile) return tile.elevHigh;
     const opp = { N: 'S', S: 'N', E: 'W', W: 'E' };
     if (opp[tile.slopeDir] === dirFromTile) return tile.elevLow;
-    return null; // cannot enter/exit perpendicular to a slope wall
+    return null;
   }
 
   function getNeighbors(gx, gy) {
@@ -1171,24 +1288,22 @@
     for (const d of dirs) {
       const nx = gx + d.dx;
       const ny = gy + d.dy;
-      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      if (!isTileUnlocked(nx, ny)) continue;
       const nxt = grid[ny][nx];
       if (!isTraversable(nxt)) continue;
 
       const curEdgeElev = getElevationAtEdge(cur, d.dir);
       const nxtEdgeElev = getElevationAtEdge(nxt, d.opp);
       if (curEdgeElev === null || nxtEdgeElev === null) continue;
-      if (Math.abs(curEdgeElev - nxtEdgeElev) > 0.05) continue; // must match elevation!
+      if (Math.abs(curEdgeElev - nxtEdgeElev) > 0.05) continue;
       res.push(nxt);
     }
     return res;
   }
 
-  // Physical speed multiplier on a tile (affects ambulance driving speed)
   function getTileSpeedMultiplier(tile) {
     let mult = 1.0;
     if (tile.type === 'slope') {
-      // Steep slope slows ambulance down; Obstacle Lv.3 mitigates 30% of slope penalty
       const basePenalty = 0.52;
       const mitigation = state.upgrades.obstacles >= 3 ? 0.7 : 1.0;
       mult *= (1 - basePenalty * mitigation);
@@ -1199,23 +1314,256 @@
     return mult;
   }
 
-  // Algorithmic traversal cost used by pathfinder depending on 'obstacles' upgrade level
   function getAlgorithmStepCost(tile) {
     const obsLvl = state.upgrades.obstacles;
-    if (obsLvl === 0) {
-      // Unweighted standard BFS: treats every tile as cost 1 (ignores slopes & traffic)
-      return 1.0;
-    } else if (obsLvl === 1) {
-      // Slope-aware: accounts for slope slowdown, still ignores traffic obstacles
-      return tile.type === 'slope' ? 2.4 : 1.0;
-    } else {
-      // Lv.2 & Lv.3: Full multi-obstacle + slope time-cost calculation
-      return 1.0 / getTileSpeedMultiplier(tile);
+    if (obsLvl === 0) return 1.0;
+    if (obsLvl === 1) return tile.type === 'slope' ? 2.4 : 1.0;
+    return 1.0 / getTileSpeedMultiplier(tile);
+  }
+
+  // =========================================================================
+  // 6. PEDESTRIANS & ROAD PROPS (COLLISION & LAUNCH PHYSICS!)
+  // =========================================================================
+  const pedestrians = [];
+  const roadProps = [];
+  const floatingTexts = [];
+  const shockwaves = [];
+  let cameraShake = 0;
+
+  function gridToWorld(gx, gy) {
+    const sz = getActiveMapSize();
+    return {
+      wx: (gx - sz / 2 + 0.5) * TILE_SIZE,
+      wy: (gy - sz / 2 + 0.5) * TILE_SIZE
+    };
+  }
+
+  function spawnPedestriansAndProps() {
+    const sz = getActiveMapSize();
+    // Ensure lively pedestrians in unlocked road tiles
+    const targetPeds = Math.min(14, 5 + state.upgrades.expansion * 4);
+    while (pedestrians.length < targetPeds) {
+      const candidates = [];
+      for (let y = 0; y < sz; y++) {
+        for (let x = 0; x < sz; x++) {
+          const t = grid[y][x];
+          if (t.type === 'road' && Math.hypot(x - ambulance.gx, y - ambulance.gy) >= 2.5) {
+            candidates.push(t);
+          }
+        }
+      }
+      if (candidates.length === 0) break;
+      const t = candidates[Math.floor(Math.random() * candidates.length)];
+      const w = gridToWorld(t.gx, t.gy);
+      const sideOffset = (Math.random() < 0.5 ? -1 : 1) * (10 + Math.random() * 5);
+      pedestrians.push({
+        gx: t.gx,
+        gy: t.gy,
+        wx: w.wx + sideOffset,
+        wy: w.wy + (Math.random() - 0.5) * 14,
+        wz: t.elev * 28,
+        dirX: Math.random() < 0.5 ? 1 : -1,
+        dirY: Math.random() < 0.5 ? 1 : -1,
+        speed: 14 + Math.random() * 10,
+        walkPhase: Math.random() * 10,
+        coatColor: ['#b88b6d', '#38bdf8', '#eeb44f', '#e2e8f0'][pedestrians.length % 4],
+        state: 'walking', // 'walking' | 'launched'
+        vx: 0, vy: 0, vz: 0,
+        spin: 0,
+        spinRate: 0,
+        launchTimer: 0
+      });
+    }
+
+    // Spawn traffic cones / barricades on unlocked roads
+    const targetProps = Math.min(12, 4 + state.upgrades.expansion * 4);
+    while (roadProps.length < targetProps) {
+      const candidates = [];
+      for (let y = 0; y < sz; y++) {
+        for (let x = 0; x < sz; x++) {
+          const t = grid[y][x];
+          if (t.type === 'road' && Math.hypot(x - ambulance.gx, y - ambulance.gy) >= 2.5) {
+            if (!roadProps.some(rp => rp.gx === x && rp.gy === y && rp.state === 'intact')) {
+              candidates.push(t);
+            }
+          }
+        }
+      }
+      if (candidates.length === 0) break;
+      const t = candidates[Math.floor(Math.random() * candidates.length)];
+      const w = gridToWorld(t.gx, t.gy);
+      roadProps.push({
+        gx: t.gx,
+        gy: t.gy,
+        wx: w.wx + (Math.random() - 0.5) * 16,
+        wy: w.wy + (Math.random() - 0.5) * 16,
+        wz: t.elev * 28,
+        kind: t.obstacle ? 'barricade' : 'cone',
+        state: 'intact', // 'intact' | 'flying' | 'respawning'
+        vx: 0, vy: 0, vz: 0,
+        spin: 0, spinRate: 0,
+        timer: 0
+      });
+    }
+  }
+
+  function addFloatingText(wx, wy, wz, text, color = '#ffd166') {
+    floatingTexts.push({
+      wx, wy, wz,
+      text,
+      color,
+      life: 1.25,
+      maxLife: 1.25
+    });
+  }
+
+  function addShockwave(wx, wy, wz, color = '#ffd166') {
+    shockwaves.push({
+      wx, wy, wz,
+      radius: 4,
+      maxRadius: 42,
+      color,
+      life: 0.45,
+      maxLife: 0.45
+    });
+  }
+
+  function updatePedestriansAndProps(dt) {
+    const sz = getActiveMapSize();
+    const ambSpeed = Math.hypot(ambulance.velX, ambulance.velY);
+    const isAmbMoving = ambSpeed > 8;
+
+    // 1. Update Pedestrians
+    for (let i = pedestrians.length - 1; i >= 0; i--) {
+      const p = pedestrians[i];
+      if (p.state === 'walking') {
+        p.walkPhase += dt * 9;
+        p.wx += p.dirX * p.speed * dt;
+        p.wy += p.dirY * p.speed * 0.65 * dt;
+
+        // Keep pedestrian on unlocked traversable road tiles
+        const gx = Math.floor(p.wx / TILE_SIZE + sz / 2);
+        const gy = Math.floor(p.wy / TILE_SIZE + sz / 2);
+        if (!isTileUnlocked(gx, gy) || grid[gy][gx].type !== 'road') {
+          p.dirX *= -1;
+          p.dirY *= -1;
+          p.wx += p.dirX * p.speed * dt * 2.5;
+          p.wy += p.dirY * p.speed * dt * 2.5;
+        } else {
+          p.gx = gx;
+          p.gy = gy;
+          p.wz = grid[gy][gx].elev * 28;
+        }
+
+        // Check Collision with Moving Ambulance!
+        if (isAmbMoving) {
+          const dx = p.wx - ambulance.wx;
+          const dy = p.wy - ambulance.wy;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 19 && Math.abs(p.wz - ambulance.wz) < 18) {
+            p.state = 'launched';
+            p.launchTimer = 1.35;
+            const nx = (dx / (dist || 1)) + (ambulance.velX / (ambSpeed || 1)) * 0.9;
+            const ny = (dy / (dist || 1)) + (ambulance.velY / (ambSpeed || 1)) * 0.9;
+            const norm = Math.hypot(nx, ny) || 1;
+            p.vx = (nx / norm) * 145;
+            p.vy = (ny / norm) * 145;
+            p.vz = 155;
+            p.spinRate = (Math.random() < 0.5 ? -1 : 1) * 15;
+
+            state.crashCount++;
+            document.getElementById('statRescued').textContent = `${state.rescuedCount} 명 · ${state.crashCount} 회`;
+            cameraShake = Math.max(cameraShake, 7.5);
+            playCrashSound(true);
+            addShockwave(p.wx, p.wy, p.wz + 2, '#ffd166');
+            spawnParticles(p.wx, p.wy, p.wz + 10, '#ffd166', 16);
+            const shouts = ['💥 앗! 비켜요!', '💫 끼이익—!', '🚨 응급차 나갑니다!', '⚡ 쾅! 조심하세요!'];
+            addFloatingText(p.wx, p.wy, p.wz + 26, shouts[state.crashCount % shouts.length], '#ffd166');
+          }
+        }
+      } else if (p.state === 'launched') {
+        p.wx += p.vx * dt;
+        p.wy += p.vy * dt;
+        p.wz += p.vz * dt;
+        p.vz -= 340 * dt; // gravity
+        p.spin += p.spinRate * dt;
+        if (p.wz < 0) {
+          p.wz = 0;
+          p.vz = Math.abs(p.vz) * 0.42;
+          p.vx *= 0.65;
+          p.vy *= 0.65;
+        }
+        p.launchTimer -= dt;
+        if (p.launchTimer <= 0) {
+          pedestrians.splice(i, 1);
+          spawnPedestriansAndProps();
+        }
+      }
+    }
+
+    // 2. Update Road Props (Cones & Barricades)
+    for (let i = roadProps.length - 1; i >= 0; i--) {
+      const rp = roadProps[i];
+      if (rp.state === 'intact') {
+        if (isAmbMoving) {
+          const dx = rp.wx - ambulance.wx;
+          const dy = rp.wy - ambulance.wy;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 18 && Math.abs(rp.wz - ambulance.wz) < 18) {
+            rp.state = 'flying';
+            rp.timer = 1.2;
+            const nx = (dx / (dist || 1)) + (ambulance.velX / (ambSpeed || 1)) * 1.1;
+            const ny = (dy / (dist || 1)) + (ambulance.velY / (ambSpeed || 1)) * 1.1;
+            const norm = Math.hypot(nx, ny) || 1;
+            rp.vx = (nx / norm) * (135 + Math.random() * 55);
+            rp.vy = (ny / norm) * (135 + Math.random() * 55);
+            rp.vz = 125 + Math.random() * 50;
+            rp.spinRate = (Math.random() < 0.5 ? -1 : 1) * 18;
+
+            state.crashCount++;
+            document.getElementById('statRescued').textContent = `${state.rescuedCount} 명 · ${state.crashCount} 회`;
+            cameraShake = Math.max(cameraShake, 5.5);
+            playCrashSound(false);
+            addShockwave(rp.wx, rp.wy, rp.wz + 2, '#fb923c');
+            spawnParticles(rp.wx, rp.wy, rp.wz + 8, '#fb923c', 14);
+            addFloatingText(rp.wx, rp.wy, rp.wz + 22, rp.kind === 'barricade' ? '🚧 바리케이드 돌파!' : '🔶 라바콘 날아감!', '#fb923c');
+          }
+        }
+      } else if (rp.state === 'flying') {
+        rp.wx += rp.vx * dt;
+        rp.wy += rp.vy * dt;
+        rp.wz += rp.vz * dt;
+        rp.vz -= 320 * dt;
+        rp.spin += rp.spinRate * dt;
+        if (rp.wz < 0) {
+          rp.wz = 0;
+          rp.vz = Math.abs(rp.vz) * 0.35;
+        }
+        rp.timer -= dt;
+        if (rp.timer <= 0) {
+          roadProps.splice(i, 1);
+          setTimeout(spawnPedestriansAndProps, 3000);
+        }
+      }
+    }
+
+    // 3. Update Floating Texts & Shockwaves
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+      const ft = floatingTexts[i];
+      ft.wz += 24 * dt;
+      ft.life -= dt;
+      if (ft.life <= 0) floatingTexts.splice(i, 1);
+    }
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+      const sw = shockwaves[i];
+      sw.life -= dt;
+      sw.radius = sw.maxRadius * (1 - sw.life / sw.maxLife);
+      if (sw.life <= 0) shockwaves.splice(i, 1);
     }
   }
 
   // =========================================================================
-  // 6. EMERGENCY PATIENTS SYSTEM
+  // 7. EMERGENCY PATIENTS SYSTEM
   // =========================================================================
   const PATIENT_NAMES = [
     '급성 심근경색 환자', '고지대 등산객 골절', '교통사고 외상 환자',
@@ -1226,33 +1574,37 @@
   let nextPatientId = 1;
 
   function getValidPatientSpawnTiles() {
+    const sz = getActiveMapSize();
     const list = [];
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < sz; y++) {
+      for (let x = 0; x < sz; x++) {
         const t = grid[y][x];
-        if (t.type === 'road' && !t.obstacle && !(x === 2 && y === 2)) {
-          // Avoid spawning right next to hospital
-          if (Math.hypot(x - 2, y - 2) >= 4) list.push(t);
+        if (t.type === 'road' && !t.obstacle) {
+          // Ensure reachable from ambulance and at least 3 tiles away from all hospitals
+          const farFromHosp = HOSPITAL_SITES.slice(0, 1 + state.upgrades.hospitals)
+            .every(h => Math.hypot(x - h.gx, y - h.gy) >= 3.2);
+          if (farFromHosp) list.push(t);
         }
       }
     }
     return list;
   }
 
-  function spawnPatient(forceElevated = false) {
+  function spawnPatient(preferElevated = false) {
     if (patients.length >= 3) return;
     let candidates = getValidPatientSpawnTiles().filter(t =>
       !patients.some(p => p.gx === t.gx && p.gy === t.gy) &&
       !(ambulance.gx === t.gx && ambulance.gy === t.gy)
     );
-    if (forceElevated) {
+    if (preferElevated) {
       const elevCand = candidates.filter(t => t.elev >= 1);
       if (elevCand.length > 0) candidates = elevCand;
     }
     if (candidates.length === 0) return;
     const tile = candidates[Math.floor(Math.random() * candidates.length)];
-    const baseCash = 180 + tile.elev * 65 + Math.floor(Math.random() * 45);
-    const baseRP = 35 + tile.elev * 15;
+    const expBonus = state.upgrades.expansion * 75;
+    const baseCash = 175 + expBonus + tile.elev * 65 + Math.floor(Math.random() * 40);
+    const baseRP = 35 + state.upgrades.expansion * 12 + tile.elev * 15;
     patients.push({
       id: nextPatientId++,
       gx: tile.gx,
@@ -1261,34 +1613,51 @@
       label: PATIENT_NAMES[(nextPatientId - 2) % PATIENT_NAMES.length],
       district: tile.districtName,
       baseCash,
-      baseRP,
-      spawnTime: performance.now()
+      baseRP
     });
     renderDispatchList();
   }
 
   // =========================================================================
-  // 7. AMBULANCE & BFS VISUALIZATION ENGINE
+  // 8. AMBULANCE & BFS VISUALIZATION ENGINE
   // =========================================================================
+  const initW = gridToWorld(2, 3);
   const ambulance = {
     gx: 2,
     gy: 3,
-    wx: (2 - GRID_W / 2 + 0.5) * TILE_SIZE,
-    wy: (3 - GRID_H / 2 + 0.5) * TILE_SIZE,
+    wx: initW.wx,
+    wy: initW.wy,
     wz: 0,
-    heading: 0,
-    pitch: 0,
+    velX: 0,
+    velY: 0,
     carrying: null,
-    path: [],       // array of tiles to traverse
+    path: [],
     pathIndex: 0,
-    segProgress: 0,
-    sirenPhase: 0
+    segProgress: 0
   };
+
+  function resyncWorldPositionsAfterResize() {
+    const w = gridToWorld(ambulance.gx, ambulance.gy);
+    ambulance.wx = w.wx;
+    ambulance.wy = w.wy;
+    ambulance.wz = grid[ambulance.gy][ambulance.gx].elev * 28;
+    ambulance.path = [];
+    ambulance.pathIndex = 0;
+    ambulance.segProgress = 0;
+    bfsVisual.active = false;
+    bfsVisual.searching = false;
+    bfsVisual.visitedSet.clear();
+    bfsVisual.frontierSet.clear();
+    bfsVisual.finalPath = [];
+    pedestrians.length = 0;
+    roadProps.length = 0;
+    spawnPedestriansAndProps();
+  }
 
   const bfsVisual = {
     active: false,
     searching: false,
-    steps: [],          // recorded snapshots of BFS expansion
+    steps: [],
     stepCursor: 0,
     visitedSet: new Set(),
     frontierSet: new Set(),
@@ -1307,12 +1676,19 @@
 
   function runBFSAndDispatch(targetTile) {
     if (!targetTile) return;
-    // If clicked on a non-traversable building, snap to nearest traversable neighbor
+
+    if (!isTileUnlocked(targetTile.gx, targetTile.gy)) {
+      showToast('🔒 아직 미개방 구역입니다! 하단 상점에서 [도시 관제 구역 확장]을 구매하세요.');
+      playTone(220, 'sawtooth', 0.1, 0.05);
+      return;
+    }
+
     if (!isTraversable(targetTile)) {
       let best = null;
       let bestD = Infinity;
-      for (let y = 0; y < GRID_H; y++) {
-        for (let x = 0; x < GRID_W; x++) {
+      const sz = getActiveMapSize();
+      for (let y = 0; y < sz; y++) {
+        for (let x = 0; x < sz; x++) {
           if (isTraversable(grid[y][x])) {
             const d = Math.hypot(x - targetTile.gx, y - targetTile.gy);
             if (d < bestD) { bestD = d; best = grid[y][x]; }
@@ -1323,14 +1699,12 @@
     }
     if (!targetTile) return;
 
-    // Determine start tile (if currently moving between tiles, start from current/next tile cleanly)
     const startTile = grid[ambulance.gy][ambulance.gx];
     if (startTile.gx === targetTile.gx && startTile.gy === targetTile.gy) {
       checkTileArrival(startTile);
       return;
     }
 
-    // Perform BFS (or Cost-Aware Priority BFS when Obstacle Upgrade >= 1)
     const visitedLvl = state.upgrades.visited;
     const obsLvl = state.upgrades.obstacles;
 
@@ -1345,13 +1719,11 @@
     let redundantChecks = 0;
 
     while (queue.length > 0) {
-      // If obstacle/slope weighting is unlocked, pop minimum accumulated cost (Best-First / Dijkstra-BFS)
       if (obsLvl >= 1) {
         queue.sort((a, b) => a.cost - b.cost);
       }
       const currentObj = queue.shift();
       const cur = currentObj.tile;
-      const curKey = tileKey(cur.gx, cur.gy);
 
       const neighbors = getNeighbors(cur.gx, cur.gy);
       for (const nxt of neighbors) {
@@ -1367,7 +1739,6 @@
           costMap.set(nKey, newCost);
           queue.push({ tile: nxt, cost: newCost, dist: newDist });
         } else {
-          // Simulate redundant re-evaluation overhead if Visited Array upgrade is Lv.0
           if (visitedLvl === 0) {
             redundantChecks++;
           } else if (obsLvl >= 1 && newCost < (costMap.get(nKey) ?? Infinity) - 0.001) {
@@ -1396,7 +1767,6 @@
       return;
     }
 
-    // Reconstruct path
     const path = [];
     let trace = targetTile;
     while (trace) {
@@ -1405,14 +1775,12 @@
       trace = parentMap.get(tileKey(trace.gx, trace.gy));
     }
 
-    // Calculate estimated time
-    const baseSpeed = 2.6 + state.upgrades.speed * 0.85;
+    const baseSpeed = 2.65 + state.upgrades.speed * 0.85;
     let estSeconds = 0;
     for (let i = 1; i < path.length; i++) {
       estSeconds += 1 / (baseSpeed * getTileSpeedMultiplier(path[i]));
     }
 
-    // Update BFS Visual State
     bfsVisual.active = true;
     bfsVisual.searching = true;
     bfsVisual.steps = steps;
@@ -1426,13 +1794,11 @@
     bfsVisual.targetTile = targetTile;
     bfsVisual.redundantCount = redundantChecks;
 
-    // Grant small RP bonus for BFS exploration if Visited Lv.2+
     if (visitedLvl >= 2) {
       const bonusRP = Math.max(2, Math.floor(visited.size * 0.35));
       state.rp += bonusRP;
     }
 
-    // Update Telemetry UI
     document.getElementById('statVisited').textContent = `${visited.size} 노드`;
     document.getElementById('statRedundant').textContent =
       visitedLvl === 0 ? `${redundantChecks} 회 (비효율)` : `0 회 (visited[] 차단)`;
@@ -1442,35 +1808,46 @@
     playTone(520, 'triangle', 0.09, 0.06);
 
     bfsVisual.onCompleteCallback = () => {
-      // Immediately start moving ambulance along path!
       ambulance.path = path;
       ambulance.pathIndex = 0;
       ambulance.segProgress = 0;
       updateStatusHUD(
         ambulance.carrying ? 'carrying' : 'busy',
         ambulance.carrying
-          ? `환자 이송 중 → 중앙 병원으로 이동 (${path.length - 1}칸)`
+          ? `환자 이송 중 → ${targetTile.districtName} (${path.length - 1}칸)`
           : `출동 중 → ${targetTile.districtName} (${path.length - 1}칸)`
       );
       playTone(740, 'sine', 0.12, 0.07);
     };
   }
 
+  function findNearestHospitalTile() {
+    const count = 1 + state.upgrades.hospitals;
+    let best = grid[2][2];
+    let bestD = Infinity;
+    for (let i = 0; i < count && i < HOSPITAL_SITES.length; i++) {
+      const s = HOSPITAL_SITES[i];
+      if (!isTileUnlocked(s.gx, s.gy)) continue;
+      const d = Math.hypot(s.gx - ambulance.gx, s.gy - ambulance.gy);
+      if (d < bestD) { bestD = d; best = grid[s.gy][s.gx]; }
+    }
+    return best;
+  }
+
   function checkTileArrival(tile) {
-    // 1. Check if patient is at this tile and ambulance is empty
     const pIdx = patients.findIndex(p => p.gx === tile.gx && p.gy === tile.gy);
     if (pIdx !== -1 && !ambulance.carrying) {
       const picked = patients.splice(pIdx, 1)[0];
       ambulance.carrying = picked;
+      const nearestHosp = findNearestHospitalTile();
       renderDispatchList();
-      showToast(`🚑 [${picked.label}] 탑승 완료! 중앙 병원(좌상단)을 클릭해 이송하세요!`);
-      updateStatusHUD('carrying', `환자 탑승 중 (${picked.label}) — 중앙 병원을 클릭하세요!`);
+      showToast(`🚑 [${picked.label}] 탑승! 가까운 병원(${nearestHosp.districtName})을 클릭하세요!`);
+      updateStatusHUD('carrying', `환자 탑승 중 — 병원을 클릭해 이송하세요!`);
       playTone(620, 'sine', 0.1, 0.08, 0);
       playTone(880, 'sine', 0.14, 0.08, 0.09);
       return;
     }
 
-    // 2. Check if arrived at Central Hospital while carrying a patient
     if (tile.type === 'hospital' && ambulance.carrying) {
       const p = ambulance.carrying;
       ambulance.carrying = null;
@@ -1481,42 +1858,42 @@
       state.rp += earnedRP;
       state.rescuedCount += 1;
 
-      document.getElementById('statRescued').textContent = `${state.rescuedCount} 명`;
+      document.getElementById('statRescued').textContent = `${state.rescuedCount} 명 · ${state.crashCount} 회`;
       updateCurrencyUI();
-      showToast(`🏥 이송 완료! +$${earnedCash} 자금 / +${earnedRP} RP 획득!`);
+      renderDispatchList();
+      showToast(`🏥 [${tile.districtName}] 이송 완료! +$${earnedCash} / +${earnedRP} RP`);
       updateStatusHUD('idle', '이송 완료! 다음 응급 호출 구역을 왼쪽 클릭하세요.');
       playTone(523.25, 'triangle', 0.1, 0.08, 0);
       playTone(659.25, 'triangle', 0.1, 0.08, 0.08);
       playTone(783.99, 'triangle', 0.16, 0.09, 0.16);
 
-      spawnParticles(ambulance.wx, ambulance.wy, ambulance.wz + 18, '#ffd166', 22);
-      setTimeout(() => spawnPatient(Math.random() < 0.55), 600);
+      spawnParticles(ambulance.wx, ambulance.wy, ambulance.wz + 18, '#ffd166', 24);
+      setTimeout(() => spawnPatient(Math.random() < 0.55), 550);
       return;
     }
 
-    // Arrived at general tile
     updateStatusHUD(
       ambulance.carrying ? 'carrying' : 'idle',
       ambulance.carrying
-        ? `환자 탑승 중 — 중앙 병원(2,2)을 클릭해 이송하세요!`
-        : `${tile.districtName} 도착 완료. 다음 구역을 클릭하세요.`
+        ? `환자 탑승 중 — 응급 병원을 클릭해 이송하세요!`
+        : `${tile.districtName} 도착. 다음 구역을 클릭하세요.`
     );
   }
 
   // =========================================================================
-  // 8. PARTICLES & 3D CAMERA PROJECTION
+  // 9. PARTICLES & 3D CAMERA PROJECTION
   // =========================================================================
   const particles = [];
   function spawnParticles(wx, wy, wz, color, count = 14) {
     for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const spd = 20 + Math.random() * 55;
+      const spd = 22 + Math.random() * 58;
       particles.push({
         wx, wy, wz,
         vx: Math.cos(ang) * spd,
         vy: Math.sin(ang) * spd,
-        vz: 35 + Math.random() * 50,
-        life: 0.75 + Math.random() * 0.4,
+        vz: 38 + Math.random() * 52,
+        life: 0.72 + Math.random() * 0.38,
         maxLife: 1.1,
         color
       });
@@ -1524,22 +1901,22 @@
   }
 
   const camera = {
-    yaw: -0.72,          // 3D isometric-like rotation
-    pitch: 0.90,         // Tilted top-down angle
-    zoom: 1.05,
+    yaw: -0.72,
+    pitch: 0.90,
+    zoom: 1.28,
     savedYaw: -0.72,
     savedPitch: 0.90,
-    savedZoom: 1.05,
+    savedZoom: 1.28,
     tacticalHold: false,
-    tacticalBlend: 0     // 0 = 3D City View, 1 = Top-Down Tactical Grid Maze View
+    tacticalBlend: 0
   };
 
   function getEffectiveCamera() {
     const b = camera.tacticalBlend;
-    // Smoothly interpolate toward pure north-up overhead tactical maze view when b -> 1
+    const sz = getActiveMapSize();
     const yaw = camera.yaw * (1 - b) + 0 * b;
     const pitch = camera.pitch * (1 - b) + (Math.PI / 2) * b;
-    const fitZoom = Math.min(window.innerWidth, window.innerHeight) / (GRID_W * TILE_SIZE * 1.24);
+    const fitZoom = Math.min(window.innerWidth, window.innerHeight) / (sz * TILE_SIZE * 1.25);
     const zoom = camera.zoom * (1 - b) + fitZoom * b;
     return { yaw, pitch, zoom, blend: b };
   }
@@ -1551,16 +1928,11 @@
     const ry = wx * sinY + wy * cosY;
     const sinP = Math.sin(cam.pitch);
     const cosP = Math.cos(cam.pitch);
-    const sx = canvas.width * 0.5 + rx * cam.zoom;
-    const sy = canvas.height * 0.47 + (ry * sinP - wz * cosP) * cam.zoom;
+    const shakeX = cameraShake > 0 ? (Math.random() - 0.5) * cameraShake : 0;
+    const shakeY = cameraShake > 0 ? (Math.random() - 0.5) * cameraShake : 0;
+    const sx = canvas.width * 0.5 + rx * cam.zoom + shakeX;
+    const sy = canvas.height * 0.47 + (ry * sinP - wz * cosP) * cam.zoom + shakeY;
     return { x: sx, y: sy, depth: ry };
-  }
-
-  function gridToWorld(gx, gy) {
-    return {
-      wx: (gx - GRID_W / 2 + 0.5) * TILE_SIZE,
-      wy: (gy - GRID_H / 2 + 0.5) * TILE_SIZE
-    };
   }
 
   function getTileSurfaceZ(tile, localU = 0.5, localV = 0.5, elevScale = 28) {
@@ -1574,7 +1946,7 @@
   }
 
   // =========================================================================
-  // 9. CANVAS RENDERING (3D CITY + SLOPES + BFS WAVES + TACTICAL MAZE)
+  // 10. CANVAS RENDERING (3D CITY + OCCLUSION TRANSPARENCY + COLLISION FX)
   // =========================================================================
   const canvas = document.getElementById('cityCanvas');
   const ctx = canvas.getContext('2d');
@@ -1622,8 +1994,8 @@
     const cam = getEffectiveCamera();
     const elevScale = 28 * (1 - cam.blend);
     const half = TILE_SIZE * 0.5;
+    const sz = getActiveMapSize();
 
-    // Subtle tactical blueprint grid background when in tactical view
     if (cam.blend > 0.05) {
       ctx.save();
       ctx.strokeStyle = `rgba(56, 189, 248, ${0.08 * cam.blend})`;
@@ -1638,10 +2010,35 @@
       ctx.restore();
     }
 
-    // Collect & depth-sort all tiles (back-to-front Painter's Algorithm)
+    // Build list of Protected Entities (Ambulance, Patients, Unlocked Hospitals) for Building Occlusion Transparency
+    const protectedEntities = [];
+    {
+      const ambP = project3D(ambulance.wx, ambulance.wy, ambulance.wz * (elevScale / 28) + 8, cam);
+      protectedEntities.push({ x: ambP.x, y: ambP.y, depth: ambP.depth, radius: 22 * cam.zoom });
+
+      for (const pat of patients) {
+        if (!isTileUnlocked(pat.gx, pat.gy)) continue;
+        const w = gridToWorld(pat.gx, pat.gy);
+        const pp = project3D(w.wx, w.wy, pat.elev * elevScale + 12, cam);
+        protectedEntities.push({ x: pp.x, y: pp.y, depth: pp.depth, radius: 22 * cam.zoom });
+      }
+
+      const hospCount = 1 + state.upgrades.hospitals;
+      for (let i = 0; i < hospCount && i < HOSPITAL_SITES.length; i++) {
+        const hs = HOSPITAL_SITES[i];
+        if (!isTileUnlocked(hs.gx, hs.gy)) continue;
+        const w = gridToWorld(hs.gx, hs.gy);
+        const ht = grid[hs.gy][hs.gx];
+        const hp = project3D(w.wx, w.wy, ht.elev * elevScale + 18, cam);
+        protectedEntities.push({ x: hp.x, y: hp.y, depth: hp.depth, radius: 26 * cam.zoom });
+      }
+    }
+
+    // Collect & depth-sort active map tiles (plus a 1-tile preview border of locked districts)
+    const renderLimit = Math.min(MAX_GRID_W, sz + 2);
     const allTiles = [];
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < renderLimit; y++) {
+      for (let x = 0; x < renderLimit; x++) {
         const t = grid[y][x];
         const { wx, wy } = gridToWorld(x, y);
         const centerProj = project3D(wx, wy, t.elev * elevScale, cam);
@@ -1652,15 +2049,13 @@
     allTiles.sort((a, b) => a.depth - b.depth);
     renderedTilesOrder = allTiles;
 
-    // Fast path lookup set
     const pathSet = new Set(bfsVisual.finalPath.map(t => tileKey(t.gx, t.gy)));
 
-    // Draw each tile
     for (const t of allTiles) {
+      const unlocked = isTileUnlocked(t.gx, t.gy);
       const { wx, wy } = gridToWorld(t.gx, t.gy);
       const k = tileKey(t.gx, t.gy);
 
-      // Corner heights (handles sloped ramps seamlessly!)
       const z00 = getTileSurfaceZ(t, 0, 0, elevScale);
       const z10 = getTileSurfaceZ(t, 1, 0, elevScale);
       const z11 = getTileSurfaceZ(t, 1, 1, elevScale);
@@ -1673,7 +2068,16 @@
       const topPoly = [p00, p10, p11, p01];
       t.screenPoly = topPoly;
 
-      // Draw 3D Earth/Foundation Side Skirt for elevated roads & slopes
+      // Locked outer district blueprint preview
+      if (!unlocked) {
+        drawPoly(topPoly, 'rgba(9, 19, 34, 0.52)', 'rgba(184, 139, 109, 0.25)', 1);
+        if (hoverTile && hoverTile.gx === t.gx && hoverTile.gy === t.gy) {
+          drawPoly(topPoly, 'rgba(238, 180, 79, 0.16)', '#eeb44f', 1.8);
+        }
+        continue;
+      }
+
+      // 3D Earth/Foundation Side Skirt for elevated roads & slopes
       if (elevScale > 1 && (t.elev > 0 || t.type === 'slope')) {
         const b00 = project3D(wx - half, wy - half, 0, cam);
         const b10 = project3D(wx + half, wy - half, 0, cam);
@@ -1690,13 +2094,11 @@
         }
       }
 
-      // --- Tile Top Surface Styling ---
+      // --- 3D BUILDING + OCCLUSION TRANSPARENCY ---
       if (t.type === 'building') {
         if (cam.blend > 0.72) {
-          // Tactical Grid Maze Wall Block
           const fill = t.bStyle === 0 ? '#3d261c' : '#132842';
           drawPoly(topPoly, fill, '#6d4c3d', 1.4);
-          // Hatch X inside maze wall
           ctx.strokeStyle = 'rgba(184, 139, 109, 0.25)';
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -1704,7 +2106,6 @@
           ctx.moveTo(p10.x, p10.y); ctx.lineTo(p01.x, p01.y);
           ctx.stroke();
         } else {
-          // 3D Extruded Building
           const bh = t.bHeight * (1 - cam.blend);
           const baseZ = t.elev * elevScale;
           const roofZ = baseZ + bh;
@@ -1718,9 +2119,40 @@
           const f11 = project3D(wx + half - 2, wy + half - 2, baseZ, cam);
           const f01 = project3D(wx - half + 2, wy + half - 2, baseZ, cam);
 
+          // Check if this building visually occludes Ambulance, Patient, or Hospital!
+          const allPts = [r00, r10, r11, r01, f00, f10, f11, f01];
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          for (const pt of allPts) {
+            if (pt.x < minX) minX = pt.x;
+            if (pt.x > maxX) maxX = pt.x;
+            if (pt.y < minY) minY = pt.y;
+            if (pt.y > maxY) maxY = pt.y;
+          }
+
+          let isOccluding = false;
+          for (const ent of protectedEntities) {
+            // Building is in front of entity in camera space
+            if (t.depth > ent.depth - 3) {
+              if (
+                ent.x + ent.radius >= minX &&
+                ent.x - ent.radius <= maxX &&
+                ent.y + ent.radius >= minY &&
+                ent.y - ent.radius <= maxY
+              ) {
+                isOccluding = true;
+                break;
+              }
+            }
+          }
+
+          const targetOpacity = isOccluding ? 0.20 : 1.0;
+          t.opacity += (targetOpacity - t.opacity) * 0.22;
+
+          ctx.save();
+          ctx.globalAlpha = t.opacity;
+
           drawPoly([f00, f10, f11, f01], '#09121e', '#1e3552', 1);
 
-          // Draw 4 building walls sorted by face center depth
           const faces = [
             { pts: [r00, r10, f10, f00], d: (f00.depth + f10.depth) * 0.5, shade: 0 },
             { pts: [r10, r11, f11, f10], d: (f10.depth + f11.depth) * 0.5, shade: 1 },
@@ -1732,41 +2164,48 @@
           for (const f of faces) {
             let wallCol;
             if (t.bStyle === 0) {
-              // Architectural Brown Brick Tower
               wallCol = ['#5c3b2c', '#492e22', '#6e4736', '#523426'][f.shade];
             } else {
-              // Dark Blue Glass Skyscraper
               wallCol = ['#183456', '#11253e', '#204570', '#142c49'][f.shade];
             }
             drawPoly(f.pts, wallCol, 'rgba(238, 180, 79, 0.22)', 0.9);
           }
 
-          // Roof
           const roofCol = t.bStyle === 0 ? '#78503d' : '#244b78';
           drawPoly([r00, r10, r11, r01], roofCol, '#b88b6d', 1.2);
 
-          // Inner roof mechanical pad
           const m00 = project3D(wx - half * 0.45, wy - half * 0.45, roofZ + 1, cam);
           const m10 = project3D(wx + half * 0.45, wy - half * 0.45, roofZ + 1, cam);
           const m11 = project3D(wx + half * 0.45, wy + half * 0.45, roofZ + 1, cam);
           const m01 = project3D(wx - half * 0.45, wy + half * 0.45, roofZ + 1, cam);
           drawPoly([m00, m10, m11, m01], t.bStyle === 0 ? '#4e3124' : '#152c47');
+
+          ctx.restore();
+
+          // If building is currently transparent, draw a crisp X-ray wireframe outline so spatial awareness stays clear
+          if (t.opacity < 0.75) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+            ctx.lineWidth = 1;
+            drawPoly([r00, r10, r11, r01], null, 'rgba(56, 189, 248, 0.35)', 1);
+            ctx.restore();
+          }
         }
         continue;
       }
 
       // --- Road / Slope / Hospital Surface ---
-      let surfaceFill = '#132842'; // Dark blue lowland road
+      let surfaceFill = '#132842';
       let borderCol = 'rgba(56, 189, 248, 0.22)';
 
       if (t.type === 'slope') {
-        surfaceFill = '#6b4735'; // Distinct warm brown sloped ramp
+        surfaceFill = '#6b4735';
         borderCol = '#eeb44f';
       } else if (t.elev === 1) {
-        surfaceFill = '#4b3226'; // Mid-elevation brown terrace road
+        surfaceFill = '#4b3226';
         borderCol = 'rgba(184, 139, 109, 0.45)';
       } else if (t.elev === 2) {
-        surfaceFill = '#3a251c'; // Highland chestnut ridge road
+        surfaceFill = '#3a251c';
         borderCol = 'rgba(238, 180, 79, 0.55)';
       }
 
@@ -1777,14 +2216,13 @@
 
       drawPoly(topPoly, surfaceFill, borderCol, cam.blend > 0.5 ? 1.5 : 1.0);
 
-      // Center road dashed line (subtle)
       const cProj = project3D(wx, wy, (z00 + z11) * 0.5 + 0.5, cam);
       ctx.fillStyle = 'rgba(243, 239, 233, 0.22)';
       ctx.beginPath();
       ctx.arc(cProj.x, cProj.y, 1.8 * cam.zoom, 0, Math.PI * 2);
       ctx.fill();
 
-      // --- Slope Incline Chevrons & Indicator ---
+      // --- Slope Incline Chevrons ---
       if (t.type === 'slope') {
         const dirVec = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[t.slopeDir];
         const pStart = project3D(wx - dirVec[0] * 10, wy - dirVec[1] * 10, (z00 + z11) * 0.5 + 1, cam);
@@ -1796,7 +2234,6 @@
         ctx.lineTo(pEnd.x, pEnd.y);
         ctx.stroke();
 
-        // Arrowhead
         const ang = Math.atan2(pEnd.y - pStart.y, pEnd.x - pStart.x);
         ctx.fillStyle = '#ffd166';
         ctx.beginPath();
@@ -1807,12 +2244,12 @@
         ctx.fill();
       }
 
-      // --- Traffic / Roadwork Obstacle Overlay ---
+      // --- Traffic Congestion Overlay ---
       if (t.obstacle) {
-        drawPoly(topPoly, 'rgba(234, 88, 12, 0.34)', '#fb923c', 1.6);
+        drawPoly(topPoly, 'rgba(234, 88, 12, 0.32)', '#fb923c', 1.6);
         if (sprites.traffic.loaded) {
-          const sz = 20 * cam.zoom;
-          ctx.drawImage(sprites.traffic, cProj.x - sz / 2, cProj.y - sz / 2, sz, sz);
+          const szIcon = 19 * cam.zoom;
+          ctx.drawImage(sprites.traffic, cProj.x - szIcon / 2, cProj.y - szIcon / 2, szIcon, szIcon);
         }
       }
 
@@ -1825,7 +2262,6 @@
         const alpha = state.upgrades.visited >= 1 ? 0.36 : 0.16;
         drawPoly(topPoly, `rgba(56, 189, 248, ${alpha})`, 'rgba(56, 189, 248, 0.6)', 1.2);
 
-        // Visited Lv.2+: Draw parent pointer line
         if (state.upgrades.visited >= 2 && bfsVisual.parentMap.has(k)) {
           const par = bfsVisual.parentMap.get(k);
           const pw = gridToWorld(par.gx, par.gy);
@@ -1839,7 +2275,6 @@
           ctx.stroke();
         }
 
-        // Visited Lv.3: Draw BFS step distance number
         if (state.upgrades.visited >= 3 && bfsVisual.distMap.has(k)) {
           ctx.fillStyle = '#e0f2fe';
           ctx.font = `bold ${Math.max(9, Math.round(10 * cam.zoom))}px sans-serif`;
@@ -1857,7 +2292,6 @@
         drawPoly(topPoly, 'rgba(255, 209, 102, 0.42)', '#ffd166', 2.2);
       }
 
-      // Tactical Mode Cost Overlay (when Obstacle Upgrade Lv.2+)
       if (cam.blend > 0.65 && state.upgrades.obstacles >= 2 && !isOnPath) {
         const cost = getAlgorithmStepCost(t);
         if (cost > 1.05) {
@@ -1868,38 +2302,47 @@
         }
       }
 
-      // --- Hover Highlight ---
       if (hoverTile && hoverTile.gx === t.gx && hoverTile.gy === t.gy) {
         drawPoly(topPoly, 'rgba(255, 255, 255, 0.22)', '#ffd166', 2.5);
       }
 
-      // --- Central Hospital 3D Structure ---
+      // --- Hospital 3D Structure ---
       if (t.type === 'hospital') {
+        const baseZ = t.elev * elevScale;
+        if (ambulance.carrying) {
+          const pulseH = 0.5 + 0.5 * Math.sin(now * 0.009);
+          ctx.strokeStyle = `rgba(16, 185, 129, ${0.5 + pulseH * 0.5})`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(cProj.x, cProj.y, (18 + pulseH * 7) * cam.zoom, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
         if (cam.blend < 0.72) {
-          const hh = 42 * (1 - cam.blend);
-          const r00 = project3D(wx - half + 4, wy - half + 4, hh, cam);
-          const r10 = project3D(wx + half - 4, wy - half + 4, hh, cam);
-          const r11 = project3D(wx + half - 4, wy + half - 4, hh, cam);
-          const r01 = project3D(wx - half + 4, wy + half - 4, hh, cam);
+          const hh = 38 * (1 - cam.blend);
+          const r00 = project3D(wx - half + 4, wy - half + 4, baseZ + hh, cam);
+          const r10 = project3D(wx + half - 4, wy - half + 4, baseZ + hh, cam);
+          const r11 = project3D(wx + half - 4, wy + half - 4, baseZ + hh, cam);
+          const r01 = project3D(wx - half + 4, wy + half - 4, baseZ + hh, cam);
           drawPoly([r00, r10, p10, p00], '#1e3a8a', '#ffd166', 1);
           drawPoly([r10, r11, p11, p10], '#172554', '#ffd166', 1);
           drawPoly([r11, r01, p01, p11], '#2563eb', '#ffd166', 1);
           drawPoly([r01, r00, p00, p01], '#1d4ed8', '#ffd166', 1);
           drawPoly([r00, r10, r11, r01], '#eff6ff', '#ef4444', 2);
 
-          const topCenter = project3D(wx, wy, hh + 14, cam);
+          const topCenter = project3D(wx, wy, baseZ + hh + 14, cam);
           if (sprites.hospital.loaded) {
-            const sz = 36 * cam.zoom;
-            ctx.drawImage(sprites.hospital, topCenter.x - sz / 2, topCenter.y - sz / 2, sz, sz);
+            const szH = 34 * cam.zoom;
+            ctx.drawImage(sprites.hospital, topCenter.x - szH / 2, topCenter.y - szH / 2, szH, szH);
           }
         } else if (sprites.hospital.loaded) {
-          const sz = 28 * cam.zoom;
-          ctx.drawImage(sprites.hospital, cProj.x - sz / 2, cProj.y - sz / 2, sz, sz);
+          const szH = 26 * cam.zoom;
+          ctx.drawImage(sprites.hospital, cProj.x - szH / 2, cProj.y - szH / 2, szH, szH);
         }
       }
     }
 
-    // --- Draw Animated Path Line ---
+    // --- Animated Path Line ---
     if (bfsVisual.finalPath.length > 1) {
       ctx.save();
       ctx.strokeStyle = '#ffd166';
@@ -1917,7 +2360,79 @@
       ctx.restore();
     }
 
-    // --- Draw Emergency Patients Beacons ---
+    // --- Road Props (Cones & Barricades) ---
+    for (const rp of roadProps) {
+      const rz = rp.wz * (elevScale / 28);
+      const pGround = project3D(rp.wx, rp.wy, rz, cam);
+      const pTop = project3D(rp.wx, rp.wy, rz + 7 * (1 - cam.blend * 0.7), cam);
+      ctx.save();
+      ctx.translate(pTop.x, pTop.y);
+      if (rp.state === 'flying') ctx.rotate(rp.spin);
+
+      if (rp.kind === 'cone') {
+        const s = 5.5 * cam.zoom;
+        ctx.fillStyle = '#f97316';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 1.4);
+        ctx.lineTo(s, s * 0.8);
+        ctx.lineTo(-s, s * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        const w = 13 * cam.zoom;
+        const h = 6 * cam.zoom;
+        ctx.fillStyle = '#78350f';
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+      }
+      ctx.restore();
+      if (rp.state === 'flying') {
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.arc(pGround.x, pGround.y, 4 * cam.zoom, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // --- Passing Pedestrians ---
+    for (const ped of pedestrians) {
+      const pz = ped.wz * (elevScale / 28);
+      const pGround = project3D(ped.wx, ped.wy, pz, cam);
+      const bob = ped.state === 'walking' ? Math.abs(Math.sin(ped.walkPhase)) * 2.5 : 0;
+      const pBody = project3D(ped.wx, ped.wy, pz + (7 + bob) * (1 - cam.blend * 0.65), cam);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(pGround.x, pGround.y, 5 * cam.zoom, 3.2 * cam.zoom, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(pBody.x, pBody.y);
+      if (ped.state === 'launched') ctx.rotate(ped.spin);
+      const sc = cam.zoom;
+      // Body
+      ctx.fillStyle = ped.coatColor;
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.roundRect(-3.8 * sc, -4 * sc, 7.6 * sc, 8 * sc, 2.5 * sc);
+      ctx.fill();
+      ctx.stroke();
+      // Head
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.arc(0, -7 * sc, 3.3 * sc, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // --- Emergency Patients Beacons ---
     const pulse = 0.5 + 0.5 * Math.sin(now * 0.007);
     for (const pat of patients) {
       const w = gridToWorld(pat.gx, pat.gy);
@@ -1925,7 +2440,6 @@
       const baseP = project3D(w.wx, w.wy, pz + 2, cam);
       const floatP = project3D(w.wx, w.wy, pz + (18 + pulse * 6) * (1 - cam.blend * 0.8), cam);
 
-      // Pulsing SOS Ring on ground
       ctx.strokeStyle = `rgba(239, 68, 68, ${0.45 + pulse * 0.45})`;
       ctx.lineWidth = 2.5;
       ctx.beginPath();
@@ -1933,8 +2447,8 @@
       ctx.stroke();
 
       if (sprites.patient.loaded) {
-        const sz = 30 * cam.zoom;
-        ctx.drawImage(sprites.patient, floatP.x - sz / 2, floatP.y - sz / 2, sz, sz);
+        const szP = 30 * cam.zoom;
+        ctx.drawImage(sprites.patient, floatP.x - szP / 2, floatP.y - szP / 2, szP, szP);
       } else {
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
@@ -1943,10 +2457,23 @@
       }
     }
 
-    // --- Draw 3D Ambulance ---
+    // --- 3D Ambulance ---
     drawAmbulance(now, cam, elevScale);
 
-    // --- Draw Celebration Particles ---
+    // --- Shockwaves ---
+    for (const sw of shockwaves) {
+      const sp = project3D(sw.wx, sw.wy, sw.wz * (elevScale / 28), cam);
+      ctx.save();
+      ctx.strokeStyle = sw.color;
+      ctx.globalAlpha = Math.max(0, sw.life / sw.maxLife);
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, sw.radius * cam.zoom, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // --- Particles ---
     for (const pt of particles) {
       const sp = project3D(pt.wx, pt.wy, pt.wz * (1 - cam.blend), cam);
       ctx.fillStyle = pt.color;
@@ -1956,21 +2483,34 @@
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+
+    // --- Floating Impact Texts ---
+    for (const ft of floatingTexts) {
+      const sp = project3D(ft.wx, ft.wy, ft.wz * (1 - cam.blend * 0.7), cam);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (ft.life / ft.maxLife) * 1.4);
+      ctx.font = '900 13px "Pretendard", "Malgun Gothic", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = '#07101d';
+      ctx.lineWidth = 3.5;
+      ctx.strokeText(ft.text, sp.x, sp.y);
+      ctx.fillStyle = ft.color;
+      ctx.fillText(ft.text, sp.x, sp.y);
+      ctx.restore();
+    }
   }
 
   function drawAmbulance(now, cam, elevScale) {
-    const scaleZ = (elevScale / 28);
+    const scaleZ = elevScale / 28;
     const az = ambulance.wz * scaleZ;
     const pGround = project3D(ambulance.wx, ambulance.wy, az + 1, cam);
     const pBody = project3D(ambulance.wx, ambulance.wy, az + 8 * (1 - cam.blend * 0.7), cam);
 
-    // Ground shadow
     ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.beginPath();
     ctx.ellipse(pGround.x, pGround.y, 15 * cam.zoom, 10 * cam.zoom, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Carrying aura ring
     if (ambulance.carrying) {
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 2.5;
@@ -1979,43 +2519,42 @@
       ctx.stroke();
     }
 
-    // Draw Ambulance 3D Box + Sprite Badge
     ctx.save();
     ctx.translate(pBody.x, pBody.y);
-    const sz = 34 * cam.zoom;
+    const szA = 34 * cam.zoom;
     if (sprites.ambulance.loaded) {
-      ctx.drawImage(sprites.ambulance, -sz / 2, -sz / 2, sz, sz);
+      ctx.drawImage(sprites.ambulance, -szA / 2, -szA / 2, szA, szA);
     } else {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-12 * cam.zoom, -8 * cam.zoom, 24 * cam.zoom, 16 * cam.zoom);
     }
 
-    // Flashing red/blue siren beacon on top
     const sirenRed = Math.sin(now * 0.018) > 0;
     ctx.fillStyle = sirenRed ? '#ef4444' : '#38bdf8';
     ctx.shadowColor = sirenRed ? '#ef4444' : '#38bdf8';
     ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.arc(0, -sz * 0.36, 4 * cam.zoom, 0, Math.PI * 2);
+    ctx.arc(0, -szA * 0.36, 4 * cam.zoom, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
   // =========================================================================
-  // 10. SIMULATION UPDATE LOOP (BFS Wave Animation + Ambulance Physics)
+  // 11. SIMULATION UPDATE LOOP
   // =========================================================================
   let lastTime = performance.now();
   let bfsStepAccumulator = 0;
 
   function updateSimulation(dt) {
-    // 1. Smoothly animate Tactical View camera blend
+    if (cameraShake > 0) {
+      cameraShake = Math.max(0, cameraShake - dt * 28);
+    }
+
     const targetBlend = camera.tacticalHold ? 1 : 0;
     camera.tacticalBlend += (targetBlend - camera.tacticalBlend) * Math.min(1, dt * 11);
 
-    // 2. Advance visual BFS wave expansion
     if (bfsVisual.searching && bfsVisual.steps.length > 0) {
-      // Visited upgrade accelerates BFS wave scanning speed!
-      const waveRate = state.upgrades.visited === 0 ? 28 : (55 + state.upgrades.visited * 30);
+      const waveRate = state.upgrades.visited === 0 ? 30 : (58 + state.upgrades.visited * 32);
       bfsStepAccumulator += dt * waveRate;
       while (bfsStepAccumulator >= 1 && bfsVisual.searching) {
         bfsStepAccumulator -= 1;
@@ -2034,12 +2573,14 @@
       }
     }
 
-    // 3. Move Ambulance along discovered BFS shortest path
+    const prevWx = ambulance.wx;
+    const prevWy = ambulance.wy;
+
     if (!bfsVisual.searching && ambulance.path.length > 1 && ambulance.pathIndex < ambulance.path.length - 1) {
       const curTile = ambulance.path[ambulance.pathIndex];
       const nxtTile = ambulance.path[ambulance.pathIndex + 1];
 
-      const baseSpeed = 2.6 + state.upgrades.speed * 0.85; // tiles per second
+      const baseSpeed = 2.65 + state.upgrades.speed * 0.85;
       const terrainMult = getTileSpeedMultiplier(nxtTile);
       const effectiveSpeed = baseSpeed * terrainMult;
 
@@ -2062,7 +2603,6 @@
         ambulance.wy = w.wy;
         ambulance.wz = nxtTile.elev * 28;
 
-        // Check if arrived at final target of path
         if (ambulance.pathIndex >= ambulance.path.length - 1) {
           ambulance.path = [];
           checkTileArrival(nxtTile);
@@ -2079,13 +2619,17 @@
       }
     }
 
-    // 4. Update particles
+    ambulance.velX = (ambulance.wx - prevWx) / (dt || 0.016);
+    ambulance.velY = (ambulance.wy - prevWy) / (dt || 0.016);
+
+    updatePedestriansAndProps(dt);
+
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.wx += p.vx * dt;
       p.wy += p.vy * dt;
       p.wz += p.vz * dt;
-      p.vz -= 90 * dt;
+      p.vz -= 95 * dt;
       p.life -= dt;
       if (p.life <= 0) particles.splice(i, 1);
     }
@@ -2100,7 +2644,7 @@
   }
 
   // =========================================================================
-  // 11. INPUT CONTROLS (Left Click BFS, Right Drag Camera, Middle Hold Tactical)
+  // 12. INPUT CONTROLS (Left Click BFS, Right Drag Camera, Middle Hold Tactical)
   // =========================================================================
   let isRightDragging = false;
   let dragStartX = 0;
@@ -2109,12 +2653,15 @@
   let pointerDownY = 0;
 
   function pickTileAt(mx, my) {
-    // Iterate front-to-back (reverse painter's order)
+    // Prefer clicking directly on roads/hospitals/slopes when front buildings are transparent!
     for (let i = renderedTilesOrder.length - 1; i >= 0; i--) {
       const t = renderedTilesOrder[i];
-      if (pointInPoly(mx, my, t.screenPoly)) {
-        return t;
-      }
+      if (t.type === 'building' && t.opacity < 0.65) continue;
+      if (pointInPoly(mx, my, t.screenPoly)) return t;
+    }
+    for (let i = renderedTilesOrder.length - 1; i >= 0; i--) {
+      const t = renderedTilesOrder[i];
+      if (pointInPoly(mx, my, t.screenPoly)) return t;
     }
     return null;
   }
@@ -2131,7 +2678,6 @@
       dragStartY = e.clientY;
       canvas.style.cursor = 'grabbing';
     } else if (e.button === 1) {
-      // Middle Mouse Wheel Hold -> Enter Tactical Grid Maze View!
       e.preventDefault();
       if (!camera.tacticalHold) {
         camera.savedYaw = camera.yaw;
@@ -2159,7 +2705,6 @@
 
   window.addEventListener('mouseup', e => {
     if (e.button === 0) {
-      // Check if click happened on canvas (not dragging)
       if (e.target === canvas && Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) < 8) {
         const clickedTile = pickTileAt(e.clientX, e.clientY);
         if (clickedTile) {
@@ -2170,7 +2715,6 @@
       isRightDragging = false;
       canvas.style.cursor = 'crosshair';
     } else if (e.button === 1) {
-      // Release Middle Mouse Wheel -> Return smoothly to 3D Camera!
       if (camera.tacticalHold) {
         camera.tacticalHold = false;
         camera.yaw = camera.savedYaw;
@@ -2186,11 +2730,11 @@
     e.preventDefault();
     if (camera.tacticalHold) return;
     const factor = e.deltaY < 0 ? 1.08 : 0.92;
-    camera.zoom = Math.max(0.65, Math.min(1.9, camera.zoom * factor));
+    camera.zoom = Math.max(0.60, Math.min(1.95, camera.zoom * factor));
   }, { passive: false });
 
   // =========================================================================
-  // 12. HUD, DISPATCH LIST & UPGRADE SHOP UI
+  // 13. HUD, DISPATCH LIST & UPGRADE SHOP UI
   // =========================================================================
   function updateStatusHUD(mode, text) {
     const dot = document.getElementById('statusDot');
@@ -2202,18 +2746,17 @@
     document.getElementById('uiCash').textContent = `$${state.cash.toLocaleString()}`;
     document.getElementById('uiRP').textContent = `${state.rp.toLocaleString()} RP`;
 
-    // Check if any upgrade is affordable
     let canBuyAny = false;
     for (const def of UPGRADE_DEFS) {
       const lvl = state.upgrades[def.key];
       if (lvl < def.maxLevel) {
+        const blocked = def.customCheck ? def.customCheck(lvl) : null;
         const c = def.costs[lvl];
-        if (state.cash >= c.cash && state.rp >= c.rp) canBuyAny = true;
+        if (!blocked && state.cash >= c.cash && state.rp >= c.rp) canBuyAny = true;
       }
     }
     document.getElementById('shopBadge').style.display = canBuyAny ? 'inline-block' : 'none';
 
-    // Update Algorithm Telemetry Badge
     const obsLvl = state.upgrades.obstacles;
     const visLvl = state.upgrades.visited;
     let modeName = '기본 BFS (무가중치 탐색)';
@@ -2221,18 +2764,42 @@
     else if (obsLvl === 1) modeName = '경사도 가중치 우회 BFS';
     else if (visLvl >= 1) modeName = '방문기록 최적화 BFS (visited[])';
 
-    const totalStage = 1 + state.upgrades.speed + state.upgrades.reward + visLvl + obsLvl;
+    const sz = getActiveMapSize();
+    const hospCount = 1 + state.upgrades.hospitals;
     document.getElementById('algoModeText').textContent = modeName;
-    document.getElementById('algoTierTag').textContent = `LV.${totalStage}`;
+    document.getElementById('algoTierTag').textContent = `구역 ${sz}×${sz} · 병원 ${hospCount}곳`;
   }
 
   function renderDispatchList() {
     const box = document.getElementById('dispatchList');
     box.innerHTML = '';
-    if (patients.length === 0) {
+
+    // When carrying a patient, show unlocked hospitals at top for instant 1-click BFS dispatch!
+    if (ambulance.carrying) {
+      const count = 1 + state.upgrades.hospitals;
+      for (let i = 0; i < count && i < HOSPITAL_SITES.length; i++) {
+        const hs = HOSPITAL_SITES[i];
+        if (!isTileUnlocked(hs.gx, hs.gy)) continue;
+        const card = document.createElement('div');
+        card.className = 'dispatch-card hospital-route';
+        card.innerHTML = `
+          <img src="./img/hospital.png" alt="Hospital" onerror="this.style.display='none'" />
+          <div class="dispatch-info">
+            <strong>🏥 ${hs.name}</strong>
+            <span>이송 가능 병원 (${hs.gx}, ${hs.gy}) · 클릭 시 즉시 탐색</span>
+          </div>
+          <div class="dispatch-reward" style="color:#10b981;">이송<br>가능</div>
+        `;
+        card.onclick = () => runBFSAndDispatch(grid[hs.gy][hs.gx]);
+        box.appendChild(card);
+      }
+    }
+
+    if (patients.length === 0 && !ambulance.carrying) {
       box.innerHTML = '<div style="font-size:11.5px;color:#b8c4d4;padding:6px;">대기 중인 응급 환자가 없습니다. 곧 새 호출이 접수됩니다...</div>';
       return;
     }
+
     const mult = 1 + state.upgrades.reward * 0.45;
     for (const p of patients) {
       const card = document.createElement('div');
@@ -2258,10 +2825,11 @@
       const lvl = state.upgrades[def.key];
       const isMax = lvl >= def.maxLevel;
       const cost = isMax ? null : def.costs[lvl];
-      const affordable = !isMax && state.cash >= cost.cash && state.rp >= cost.rp;
+      const blockedReason = (!isMax && def.customCheck) ? def.customCheck(lvl) : null;
+      const affordable = !isMax && !blockedReason && state.cash >= cost.cash && state.rp >= cost.rp;
 
       const card = document.createElement('div');
-      card.className = 'upgrade-card';
+      card.className = 'upgrade-card' + (def.highlight ? ' highlight-new' : '');
       card.innerHTML = `
         <div class="upg-top">
           <img src="${def.icon}" alt="${def.title}" onerror="this.style.display='none'" />
@@ -2277,21 +2845,41 @@
         <button class="upg-buy-btn" ${(!affordable || isMax) ? 'disabled' : ''}>
           ${isMax
             ? '✅ 최고 레벨 연구 완료'
-            : `<span>업그레이드 구매</span> <span>💰 $${cost.cash}</span> <span>🧬 ${cost.rp} RP</span>`}
+            : blockedReason
+              ? `🔒 ${blockedReason} (💰 $${cost.cash} · 🧬 ${cost.rp} RP)`
+              : `<span>업그레이드 구매</span> <span>💰 $${cost.cash}</span> <span>🧬 ${cost.rp} RP</span>`}
         </button>
       `;
 
       const btn = card.querySelector('button');
-      if (!isMax) {
+      if (!isMax && !blockedReason) {
         btn.onclick = () => {
           if (state.cash < cost.cash || state.rp < cost.rp) return;
           state.cash -= cost.cash;
           state.rp -= cost.rp;
           state.upgrades[def.key] += 1;
+
+          if (def.key === 'expansion') {
+            resyncWorldPositionsAfterResize();
+            camera.zoom = Math.max(0.88, camera.zoom * 0.85);
+            spawnPatient(true);
+            showToast(`🗺️ 도시 관제 구역이 ${getActiveMapSize()}×${getActiveMapSize()} 규모로 확장되었습니다!`);
+          } else if (def.key === 'hospitals') {
+            applyUnlockedHospitals();
+            const site = HOSPITAL_SITES[state.upgrades.hospitals];
+            spawnParticles(
+              gridToWorld(site.gx, site.gy).wx,
+              gridToWorld(site.gx, site.gy).wy,
+              35, '#10b981', 26
+            );
+            showToast(`🏥 [${site.name}] 신규 개원 완료!`);
+          } else {
+            showToast(`⚡ [${def.title}] Lv.${state.upgrades[def.key]} 업그레이드 완료!`);
+          }
+
           updateCurrencyUI();
           renderDispatchList();
           renderShopModal();
-          showToast(`⚡ [${def.title}] Lv.${state.upgrades[def.key]} 업그레이드 완료!`);
           playTone(587.33, 'triangle', 0.1, 0.08, 0);
           playTone(880, 'triangle', 0.15, 0.09, 0.08);
         };
@@ -2310,10 +2898,9 @@
       el.style.opacity = '0';
       el.style.transition = 'opacity 0.3s';
       setTimeout(() => el.remove(), 320);
-    }, 2900);
+    }, 3000);
   }
 
-  // Modal & Top Buttons
   const shopOverlay = document.getElementById('shopModalOverlay');
   document.getElementById('btnOpenShop').onclick = () => {
     renderShopModal();
@@ -2340,22 +2927,22 @@
   document.getElementById('btnResetCam').onclick = () => {
     camera.yaw = -0.72;
     camera.pitch = 0.90;
-    camera.zoom = 1.05;
+    camera.zoom = state.upgrades.expansion === 0 ? 1.28 : state.upgrades.expansion === 1 ? 1.05 : 0.92;
     showToast('🎥 3D 기본 탑뷰 카메라 시점으로 초기화했습니다.');
   };
 
   // =========================================================================
-  // 13. INITIALIZE GAME SESSION
+  // 14. INITIALIZE GAME SESSION
   // =========================================================================
+  spawnPedestriansAndProps();
   spawnPatient(false);
-  spawnPatient(true); // Spawn one on elevated/sloped side to immediately highlight slopes!
+  spawnPatient(true);
   updateCurrencyUI();
   renderDispatchList();
 
-  // Periodic patient spawn check
   setInterval(() => {
     if (patients.length < 3) spawnPatient(Math.random() < 0.5);
-  }, 9000);
+  }, 8500);
 
   requestAnimationFrame(mainLoop);
 })();
