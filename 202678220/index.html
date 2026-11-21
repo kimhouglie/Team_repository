@@ -1,0 +1,2364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>응급환자 운송 타이쿤 — 3D BFS 경로 탐색 시뮬레이터</title>
+<style>
+  :root {
+    --blue-deepest: #07101d;
+    --blue-dark: #0d1d31;
+    --blue-panel: rgba(13, 29, 49, 0.90);
+    --blue-mid: #183456;
+    --blue-light: #285282;
+    --cyan-bfs: #38bdf8;
+    --brown-dark: #38231a;
+    --brown-mid: #5c3b2c;
+    --brown-warm: #875c46;
+    --brown-light: #b88b6d;
+    --gold: #eeb44f;
+    --gold-bright: #ffd166;
+    --red-sos: #ef4444;
+    --green-ok: #10b981;
+    --text-main: #f3efe9;
+    --text-muted: #b8c4d4;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 35%, #162e4d 0%, #0b1829 58%, #1d130e 100%);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Segoe UI', sans-serif;
+    color: var(--text-main);
+  }
+
+  #cityCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+  }
+
+  /* Common Brown & Dark Blue Frame */
+  .panel-frame {
+    background: linear-gradient(160deg, rgba(16, 35, 58, 0.93) 0%, rgba(10, 22, 38, 0.95) 65%, rgba(46, 29, 21, 0.92) 100%);
+    border: 2px solid var(--brown-warm);
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.65),
+      inset 0 1px 0 rgba(184, 139, 109, 0.35),
+      inset 0 0 18px rgba(13, 29, 49, 0.8);
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Top-Left Telemetry HUD */
+  #hudTopLeft {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 345px;
+    padding: 14px 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(184, 139, 109, 0.32);
+    margin-bottom: 10px;
+  }
+
+  .brand-row img {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1.5px solid var(--gold);
+    background: var(--brown-dark);
+    object-fit: cover;
+  }
+
+  .brand-title {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: var(--gold-bright);
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
+
+  .brand-sub {
+    font-size: 11.5px;
+    color: var(--brown-light);
+    margin-top: 2px;
+    font-weight: 600;
+  }
+
+  .algo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(90deg, var(--brown-dark), var(--blue-mid));
+    border: 1px solid var(--brown-light);
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cyan-bfs);
+    margin-bottom: 10px;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .algo-badge span.tag {
+    background: var(--brown-mid);
+    color: var(--gold-bright);
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 10.5px;
+  }
+
+  .telemetry-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    margin-bottom: 10px;
+  }
+
+  .stat-box {
+    background: rgba(8, 18, 32, 0.72);
+    border: 1px solid rgba(135, 92, 70, 0.45);
+    border-radius: 8px;
+    padding: 7px 9px;
+  }
+
+  .stat-label {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .stat-val {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-val.cyan { color: var(--cyan-bfs); }
+  .stat-val.gold { color: var(--gold-bright); }
+  .stat-val.warn { color: #fb923c; }
+
+  .status-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(56, 35, 26, 0.75);
+    border: 1px solid var(--brown-light);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #f8e7d8;
+  }
+
+  .pulse-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--green-ok);
+    box-shadow: 0 0 8px var(--green-ok);
+    flex-shrink: 0;
+  }
+
+  .pulse-dot.busy {
+    background: var(--gold-bright);
+    box-shadow: 0 0 10px var(--gold-bright);
+  }
+
+  .pulse-dot.carrying {
+    background: var(--red-sos);
+    box-shadow: 0 0 10px var(--red-sos);
+    animation: blink 0.8s infinite alternate;
+  }
+
+  @keyframes blink {
+    from { opacity: 0.45; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* Top-Right Emergency Dispatch & Legend */
+  #hudTopRight {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 295px;
+    padding: 13px 14px;
+    z-index: 20;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--gold-bright);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(184, 139, 109, 0.3);
+  }
+
+  .tool-btns {
+    display: flex;
+    gap: 5px;
+  }
+
+  .mini-btn {
+    background: var(--brown-dark);
+    border: 1px solid var(--brown-light);
+    color: var(--text-main);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .mini-btn:hover {
+    background: var(--brown-mid);
+    border-color: var(--gold);
+  }
+
+  #dispatchList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 165px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+  }
+
+  .dispatch-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 33, 56, 0.82);
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    border-left: 4px solid var(--red-sos);
+    border-radius: 8px;
+    padding: 6px 9px;
+    cursor: pointer;
+    transition: transform 0.14s, background 0.14s;
+  }
+
+  .dispatch-card:hover {
+    transform: translateX(-2px);
+    background: rgba(40, 26, 20, 0.9);
+    border-color: var(--gold);
+  }
+
+  .dispatch-card img {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    margin-right: 8px;
+  }
+
+  .dispatch-info {
+    flex: 1;
+    font-size: 11.5px;
+  }
+
+  .dispatch-info strong {
+    display: block;
+    color: #fff;
+    font-size: 12px;
+  }
+
+  .dispatch-info span {
+    color: var(--brown-light);
+    font-size: 10.5px;
+  }
+
+  .dispatch-reward {
+    text-align: right;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--gold-bright);
+  }
+
+  .legend-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(184, 139, 109, 0.28);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .legend-item img {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+  }
+
+  .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+
+  /* Bottom-Center Currency & Shop Dock */
+  #bottomDock {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dock-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 18px;
+    background: linear-gradient(180deg, rgba(20, 42, 68, 0.96) 0%, rgba(11, 24, 41, 0.98) 55%, rgba(54, 34, 25, 0.96) 100%);
+    border: 2px solid var(--gold);
+    box-shadow:
+      0 12px 34px rgba(0, 0, 0, 0.78),
+      0 0 20px rgba(238, 180, 79, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border-radius: 18px;
+  }
+
+  .currency-pill {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: rgba(8, 17, 29, 0.85);
+    border: 1.5px solid var(--brown-warm);
+    padding: 7px 14px;
+    border-radius: 12px;
+    min-width: 148px;
+  }
+
+  .currency-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .currency-icon.cash {
+    background: linear-gradient(135deg, var(--brown-mid), #8c5a2b);
+    border: 1.5px solid var(--gold-bright);
+    color: var(--gold-bright);
+  }
+
+  .currency-icon.rp {
+    background: linear-gradient(135deg, var(--blue-mid), #1d4ed8);
+    border: 1.5px solid var(--cyan-bfs);
+    color: var(--cyan-bfs);
+  }
+
+  .currency-meta {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .currency-meta .lbl {
+    font-size: 10.5px;
+    color: var(--brown-light);
+    font-weight: 700;
+  }
+
+  .currency-meta .amt {
+    font-size: 17px;
+    font-weight: 900;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #btnOpenShop {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #7c4d34 0%, #523222 50%, #1d3c63 100%);
+    border: 2px solid var(--gold-bright);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 13px;
+    font-size: 15px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+    position: relative;
+  }
+
+  #btnOpenShop:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(238, 180, 79, 0.35);
+    filter: brightness(1.08);
+  }
+
+  #btnOpenShop:active {
+    transform: translateY(0);
+  }
+
+  #btnOpenShop img {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  #shopBadge {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    background: var(--red-sos);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1.5px solid #fff;
+    display: none;
+  }
+
+  .controls-strip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(9, 19, 34, 0.86);
+    border: 1px solid rgba(135, 92, 70, 0.55);
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .key-cap {
+    display: inline-block;
+    background: var(--brown-dark);
+    border: 1px solid var(--brown-light);
+    color: var(--gold-bright);
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 5px;
+    margin-right: 4px;
+    font-size: 10.5px;
+  }
+
+  /* Tactical Mode Banner Overlay */
+  #tacticalBanner {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, rgba(13, 29, 49, 0.95), rgba(56, 35, 26, 0.95));
+    border: 2px solid var(--cyan-bfs);
+    color: var(--cyan-bfs);
+    padding: 7px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  #tacticalBanner.active {
+    opacity: 1;
+  }
+
+  /* Upgrade Shop Modal */
+  #shopModalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 11, 20, 0.76);
+    backdrop-filter: blur(6px);
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  #shopModalOverlay.open {
+    display: flex;
+  }
+
+  #shopModal {
+    width: 100%;
+    max-width: 860px;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 22px 24px;
+    background: linear-gradient(155deg, #10233b 0%, #0b1829 55%, #2d1c14 100%);
+    border: 2.5px solid var(--gold);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  }
+
+  .shop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 1.5px solid rgba(184, 139, 109, 0.38);
+    margin-bottom: 16px;
+  }
+
+  .shop-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .shop-title-wrap img {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    border: 2px solid var(--gold);
+  }
+
+  .shop-title-wrap h2 {
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--gold-bright);
+  }
+
+  .shop-title-wrap p {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  #btnCloseShop {
+    background: var(--brown-dark);
+    border: 1.5px solid var(--brown-light);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 7px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+
+  #btnCloseShop:hover {
+    background: var(--red-sos);
+    border-color: #fff;
+  }
+
+  .upgrade-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  @media (max-width: 720px) {
+    .upgrade-grid { grid-template-columns: 1fr; }
+    #hudTopRight { display: none; }
+  }
+
+  .upgrade-card {
+    background: linear-gradient(160deg, rgba(18, 39, 64, 0.9) 0%, rgba(42, 26, 19, 0.88) 100%);
+    border: 1.5px solid var(--brown-warm);
+    border-radius: 14px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+
+  .upgrade-card:hover {
+    border-color: var(--gold);
+    transform: translateY(-2px);
+  }
+
+  .upg-top {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .upg-top img {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    border: 1.5px solid var(--brown-light);
+    background: var(--blue-dark);
+    flex-shrink: 0;
+  }
+
+  .upg-head {
+    flex: 1;
+  }
+
+  .upg-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .upg-title-row h3 {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .lvl-pill {
+    background: var(--blue-dark);
+    border: 1px solid var(--cyan-bfs);
+    color: var(--cyan-bfs);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .upg-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-top: 5px;
+  }
+
+  .upg-effect {
+    background: rgba(7, 16, 29, 0.72);
+    border: 1px solid rgba(184, 139, 109, 0.3);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 11.5px;
+    color: var(--gold-bright);
+    font-weight: 700;
+  }
+
+  .upg-buy-btn {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--gold);
+    background: linear-gradient(90deg, var(--brown-mid), var(--blue-mid));
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: filter 0.15s, opacity 0.15s;
+  }
+
+  .upg-buy-btn:hover:not(:disabled) {
+    filter: brightness(1.15);
+  }
+
+  .upg-buy-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    border-color: var(--brown-warm);
+  }
+
+  /* Toast notification */
+  #toastContainer {
+    position: fixed;
+    bottom: 112px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+
+  .toast {
+    background: linear-gradient(90deg, rgba(13, 29, 49, 0.96), rgba(62, 39, 35, 0.96));
+    border: 1.5px solid var(--gold);
+    color: #fff;
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    animation: fadeUp 0.25s ease-out;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="cityCanvas"></canvas>
+
+<div id="tacticalBanner">🧭 전술뷰 모드 (TACTICAL GRID MAZE) — 휠 버튼을 놓으면 3D 도시 시점으로 복귀합니다</div>
+
+<!-- Top-Left HUD -->
+<div id="hudTopLeft" class="panel-frame">
+  <div class="brand-row">
+    <img src="./img/shop_emblem.png" alt="Emblem" onerror="this.style.display='none'" />
+    <div>
+      <div class="brand-title">응급환자 운송 타이쿤</div>
+      <div class="brand-sub">3D 도시 너비 우선 탐색(BFS) 관제 시스템</div>
+    </div>
+  </div>
+
+  <div class="algo-badge">
+    <span id="algoModeText">기본 BFS (무가중치 탐색)</span>
+    <span class="tag" id="algoTierTag">STAGE 1</span>
+  </div>
+
+  <div class="telemetry-grid">
+    <div class="stat-box">
+      <div class="stat-label">BFS 탐색 방문 노드</div>
+      <div class="stat-val cyan" id="statVisited">0 노드</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">중복 탐색 / 연산 지연</div>
+      <div class="stat-val warn" id="statRedundant">0 회</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">최단 경로 거리 / 예상 시간</div>
+      <div class="stat-val" id="statPathInfo">- 칸 / -초</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">누적 환자 이송 완료</div>
+      <div class="stat-val gold" id="statRescued">0 명</div>
+    </div>
+  </div>
+
+  <div class="status-banner">
+    <div class="pulse-dot" id="statusDot"></div>
+    <span id="statusText">도시의 구역이나 응급 환자를 왼쪽 클릭하세요!</span>
+  </div>
+</div>
+
+<!-- Top-Right Emergency Queue & Legend -->
+<div id="hudTopRight" class="panel-frame">
+  <div class="section-header">
+    <span>🚨 실시간 응급 호출 (클릭 시 즉시 탐색)</span>
+    <div class="tool-btns">
+      <button class="mini-btn" id="btnSound" title="효과음 켜기/끄기">🔊 ON</button>
+      <button class="mini-btn" id="btnResetCam" title="3D 카메라 각도 초기화">🎥 시점</button>
+    </div>
+  </div>
+
+  <div id="dispatchList"></div>
+
+  <div class="legend-grid">
+    <div class="legend-item"><img src="./img/hospital.png" alt="" /><span>중앙 병원 (이송지)</span></div>
+    <div class="legend-item"><img src="./img/patient.png" alt="" /><span>응급 환자 호출</span></div>
+    <div class="legend-item"><img src="./img/slope.png" alt="" /><span>경사 구역 (속도↓)</span></div>
+    <div class="legend-item"><img src="./img/traffic.png" alt="" /><span>정체 방해요소 (속도↓)</span></div>
+    <div class="legend-item"><span class="swatch" style="background:#38bdf8;"></span><span>BFS 큐 탐색 파동</span></div>
+    <div class="legend-item"><span class="swatch" style="background:#ffd166;"></span><span>도출된 최단 경로</span></div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<!-- Bottom-Center Currency & Upgrade Shop Dock -->
+<div id="bottomDock">
+  <div class="dock-main">
+    <div class="currency-pill">
+      <div class="currency-icon cash">$</div>
+      <div class="currency-meta">
+        <span class="lbl">보유 의료 자금</span>
+        <span class="amt" id="uiCash">$500</span>
+      </div>
+    </div>
+
+    <button id="btnOpenShop">
+      <img src="./img/shop_emblem.png" alt="Shop" onerror="this.style.display='none'" />
+      <span>상점 · 알고리즘 업그레이드</span>
+      <span id="shopBadge">NEW</span>
+    </button>
+
+    <div class="currency-pill">
+      <div class="currency-icon rp">RP</div>
+      <div class="currency-meta">
+        <span class="lbl">BFS 연구 데이터</span>
+        <span class="amt" id="uiRP">80 RP</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls-strip">
+    <span><span class="key-cap">좌클릭</span>BFS 탐색 시각화 후 즉시 이동</span>
+    <span><span class="key-cap">우클릭 드래그</span>3D 카메라 회전·각도</span>
+    <span><span class="key-cap">휠 누르기 유지</span>전술뷰 그리드 미로</span>
+  </div>
+</div>
+
+<!-- Upgrade Shop Modal -->
+<div id="shopModalOverlay">
+  <div id="shopModal">
+    <div class="shop-header">
+      <div class="shop-title-wrap">
+        <img src="./img/shop_emblem.png" alt="Shop" onerror="this.style.display='none'" />
+        <div>
+          <h2>응급 관제 센터 · 연구 및 장비 상점</h2>
+          <p>환자 이송 자금($)과 BFS 탐색 연구 데이터(RP)로 구급차 성능과 탐색 알고리즘을 고도화하세요.</p>
+        </div>
+      </div>
+      <button id="btnCloseShop">닫기 (ESC)</button>
+    </div>
+
+    <div class="upgrade-grid" id="upgradeGrid"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // =========================================================================
+  // 1. AUDIO SYNTHESIZER (Dependency-free Web Audio API)
+  // =========================================================================
+  let soundEnabled = true;
+  let audioCtx = null;
+  function playTone(freq, type = 'sine', duration = 0.08, vol = 0.06, delay = 0) {
+    if (!soundEnabled) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+      gain.gain.setValueAtTime(vol, audioCtx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.0008, audioCtx.currentTime + delay + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + duration);
+    } catch (e) {}
+  }
+
+  // =========================================================================
+  // 2. PRELOAD IMAGE ASSETS FROM ./img/ (with graceful fallback)
+  // =========================================================================
+  const assetNames = ['ambulance', 'hospital', 'patient', 'slope', 'traffic', 'shop_emblem'];
+  const sprites = {};
+  assetNames.forEach(name => {
+    const img = new Image();
+    img.src = `./img/${name}.png`;
+    img.loaded = false;
+    img.onload = () => { img.loaded = true; };
+    sprites[name] = img;
+  });
+
+  // =========================================================================
+  // 3. GAME STATE & UPGRADES CONFIGURATION
+  // =========================================================================
+  const state = {
+    cash: 500,
+    rp: 80,
+    rescuedCount: 0,
+    upgrades: {
+      speed: 0,      // Max 4: 차량 속도 업글
+      reward: 0,     // Max 4: 돈/보상 업글
+      visited: 0,    // Max 3: BFS 방문기록 시스템 추가
+      obstacles: 0   // Max 3: 여러 방해요소 및 경사도 계산 추가
+    }
+  };
+
+  const UPGRADE_DEFS = [
+    {
+      key: 'speed',
+      title: '고출력 터보 엔진 & 서스펜션',
+      subtitle: '차량 속도 업그레이드',
+      icon: './img/ambulance.png',
+      maxLevel: 4,
+      desc: '구급차의 기본 주행 속도를 대폭 향상시키고 오르막 경사 구역에서의 토크 손실을 줄입니다.',
+      costs: [
+        { cash: 220, rp: 30 },
+        { cash: 420, rp: 65 },
+        { cash: 750, rp: 120 },
+        { cash: 1250, rp: 200 }
+      ],
+      effectText: (lvl) => {
+        const curSpd = (2.6 + lvl * 0.85).toFixed(2);
+        const nxtSpd = (2.6 + (lvl + 1) * 0.85).toFixed(2);
+        return lvl < 4
+          ? `주행 속도: ${curSpd} 칸/초 → ${nxtSpd} 칸/초`
+          : `최고 단계 달성 (주행 속도: ${curSpd} 칸/초)`;
+      }
+    },
+    {
+      key: 'reward',
+      title: '중증 응급 의료 수가 & 연구 지원',
+      subtitle: '이송 자금 및 RP 보상 업그레이드',
+      icon: './img/hospital.png',
+      maxLevel: 4,
+      desc: '환자를 중앙 병원으로 무사히 이송할 때 획득하는 의료 자금($)과 BFS 연구 데이터(RP)를 증가시킵니다.',
+      costs: [
+        { cash: 250, rp: 40 },
+        { cash: 480, rp: 80 },
+        { cash: 850, rp: 145 },
+        { cash: 1400, rp: 230 }
+      ],
+      effectText: (lvl) => {
+        const mult = (1 + lvl * 0.45).toFixed(2);
+        const nxtMult = (1 + (lvl + 1) * 0.45).toFixed(2);
+        return lvl < 4
+          ? `보상 배율: x${mult} → x${nxtMult} (긴급 보너스 포함)`
+          : `최고 단계 달성 (보상 배율: x${mult})`;
+      }
+    },
+    {
+      key: 'visited',
+      title: 'BFS 방문기록 시스템 (Visited Array)',
+      subtitle: '중복 탐색 차단 & 탐색 트리 시각화',
+      icon: './img/shop_emblem.png',
+      maxLevel: 3,
+      desc: 'Lv.1: 방문 배열(visited[]) 도입으로 중복 노드 재방문 제거 및 탐색 파동 2배 가속 | Lv.2: 부모 역추적 포인터 표시 및 노드당 RP 추가 획득 | Lv.3: 각 구역의 BFS 깊이(거리) 실시간 매핑',
+      costs: [
+        { cash: 200, rp: 50 },
+        { cash: 460, rp: 110 },
+        { cash: 900, rp: 190 }
+      ],
+      effectText: (lvl) => {
+        const labels = [
+          '현재: 미적용 (중복 탐색 발생) → Lv.1: visited[] 중복 제거 + 기록 표시',
+          '현재: visited[] 활성화 → Lv.2: 부모 노드 포인터 시각화 + 탐색 RP 보너스',
+          '현재: 부모 포인터 표시 → Lv.3: BFS 거리 계층(d) 매핑 + 초고속 스캔',
+          '최고 단계 달성: visited[] + 부모 포인터 + 거리 계층 완전 가동'
+        ];
+        return labels[lvl];
+      }
+    },
+    {
+      key: 'obstacles',
+      title: '다중 방해요소 및 경사도 가중치 계산',
+      subtitle: '경사 감속·정체 구역 지능형 우회',
+      icon: './img/slope.png',
+      maxLevel: 3,
+      desc: '경사 구역에서는 구급차 속도가 크게 느려집니다. Lv.1: 경사도(Elevation Slope) 감속 페널티 계산 | Lv.2: 도로 정체·공사 방해요소 통합 가중치 계산 | Lv.3: 경사 감속 완화 서스펜션 제어',
+      costs: [
+        { cash: 240, rp: 55 },
+        { cash: 520, rp: 120 },
+        { cash: 980, rp: 210 }
+      ],
+      effectText: (lvl) => {
+        const labels = [
+          '현재: 경사/방해요소 무시 → Lv.1: 경사도 감속 계산 및 평지 우회 탐색',
+          '현재: 경사도 계산 중 → Lv.2: 정체 방해요소 통합 비용 + 가중치 표시',
+          '현재: 경사+정체 통합 계산 → Lv.3: 경사 감속 페널티 30% 경감',
+          '최고 단계 달성: 지형 경사·교통 정체 실시간 최단시간 라우팅'
+        ];
+        return labels[lvl];
+      }
+    }
+  ];
+
+  // =========================================================================
+  // 4. 3D CITY MAP DESIGN (16x16 with Elevations, Sloped Ramps, Obstacles)
+  // =========================================================================
+  const GRID_W = 16;
+  const GRID_H = 16;
+  const TILE_SIZE = 44;
+
+  // Tile types:
+  // 'road'     : flat road at tile.elev (0, 1, or 2)
+  // 'slope'    : inclined ramp connecting elevLow -> elevHigh along slopeDir ('N','S','E','W')
+  // 'building' : 3D building block (non-traversable)
+  // 'hospital' : Central Hospital at (2, 2)
+  const grid = [];
+
+  function initCityMap() {
+    for (let y = 0; y < GRID_H; y++) {
+      const row = [];
+      for (let x = 0; x < GRID_W; x++) {
+        row.push({
+          gx: x,
+          gy: y,
+          type: 'building',
+          elev: 0,
+          slopeDir: null, // direction going UP ('N': gy-1, 'S': gy+1, 'E': gx+1, 'W': gx-1)
+          elevLow: 0,
+          elevHigh: 0,
+          bHeight: 38 + ((x * 17 + y * 31) % 52),
+          bStyle: (x + y) % 2, // 0: brown brick, 1: dark blue glass
+          obstacle: false,
+          districtName: '도심 구역',
+          screenPoly: null,
+          depth: 0
+        });
+      }
+      grid.push(row);
+    }
+
+    const setRoad = (x, y, elev = 0, district = '저지대 블루 애비뉴', obstacle = false) => {
+      const t = grid[y][x];
+      t.type = 'road';
+      t.elev = elev;
+      t.districtName = district;
+      t.obstacle = obstacle;
+    };
+
+    const setSlope = (x, y, dir, elevLow, elevHigh, district = '경사 연결로') => {
+      const t = grid[y][x];
+      t.type = 'slope';
+      t.slopeDir = dir;
+      t.elevLow = elevLow;
+      t.elevHigh = elevHigh;
+      t.elev = (elevLow + elevHigh) * 0.5;
+      t.districtName = district;
+      t.obstacle = false;
+    };
+
+    // --- A. Lowland Perimeter & Main Flat Bypass Roads (elev = 0, Dark Blue Asphalt) ---
+    for (let x = 1; x <= 14; x++) {
+      setRoad(x, 1, 0, '북부 블루 순환로');
+      setRoad(x, 14, 0, '남부 강변 우회로');
+    }
+    for (let y = 1; y <= 14; y++) {
+      setRoad(1, y, 0, '서부 메디컬 대로');
+      setRoad(14, y, 0, '동부 외곽 순환로');
+    }
+    // Additional lowland avenues
+    for (let x = 1; x <= 6; x++) setRoad(x, 5, 0, '중앙 서측 평지로');
+    for (let y = 1; y <= 8; y++) setRoad(5, y, 0, '청색 관제 대로');
+    for (let x = 1; x <= 5; x++) setRoad(x, 9, 0, '남서 하부 대로');
+    for (let y = 9; y <= 14; y++) setRoad(8, y, 0, '중앙 남부 연결로');
+    for (let x = 8; x <= 14; x++) setRoad(x, 11, 0, '동남 평지 우회로');
+
+    // --- B. Mid-Elevation Brown Terrace Plateau (elev = 1, Warm Brown District) ---
+    // Central-Mid Terrace (x: 7..10, y: 4..8)
+    for (let y = 4; y <= 8; y++) {
+      for (let x = 7; x <= 10; x++) {
+        if ((x === 8 || x === 9) && (y === 5 || y === 7)) continue; // keep some buildings on plateau
+        setRoad(x, y, 1, '브라운 테라스 언덕 (고도 15m)');
+      }
+    }
+    // South-West Brown Hill (x: 3..6, y: 11..12)
+    setRoad(3, 11, 1, '남서 황토 언덕길 (고도 15m)');
+    setRoad(4, 11, 1, '남서 황토 언덕길 (고도 15m)');
+    setRoad(5, 11, 1, '남서 황토 언덕길 (고도 15m)');
+    setRoad(6, 11, 1, '남서 황토 언덕길 (고도 15m)');
+
+    // --- C. Highland Ridge (elev = 2, Deep Chestnut Ridge) ---
+    // North-East Highland (x: 12..13, y: 3..7)
+    for (let y = 3; y <= 7; y++) {
+      setRoad(12, y, 2, '고지대 전망 능선 (고도 30m)');
+      if (y !== 5) setRoad(13, y, 2, '고지대 전망 능선 (고도 30m)');
+    }
+
+    // --- D. Sloped Ramps Connecting Elevations (경사 구역) ---
+    // Ramp 1: West approach to Central Terrace (5,6) -> [slope at 6,6 going East 0->1] -> (7,6)
+    setSlope(6, 6, 'E', 0, 1, '중앙 서측 경사로 (경사도 18%)');
+    // Ramp 2: North approach to Central Terrace (8,1)->(8,2)->[slope at 8,3 going South 0->1]->(8,4)
+    setRoad(8, 2, 0, '북부 연결 골목');
+    setSlope(8, 3, 'S', 0, 1, '북부 테라스 경사로 (경사도 20%)');
+    // Ramp 3: South descent from Central Terrace (9,8)->[slope at 9,9 going North 0->1]->(9,10)->(9,11)
+    setSlope(9, 9, 'N', 0, 1, '남부 테라스 경사로 (경사도 18%)');
+    setRoad(9, 10, 0, '남부 연결 골목');
+    // Ramp 4: Terrace (elev 1) up to Highland Ridge (elev 2): (10,5)->[slope at 11,5 going East 1->2]->(12,5)
+    setSlope(11, 5, 'E', 1, 2, '고지대 급경사 진입로 (경사도 26%)');
+    // Ramp 5: Highland Ridge (elev 2) down to East Loop (elev 0) via double ramp:
+    // (13,7) elev 2 -> [slope at 13,8 going North 1->2] -> (13,9) elev 1 -> [slope at 13,10 going North 0->1] -> (13,11) elev 0
+    setSlope(13, 8, 'N', 1, 2, '동부 상단 급경사로 (경사도 25%)');
+    setRoad(13, 9, 1, '동부 중간 전망대 (고도 15m)');
+    setSlope(13, 10, 'N', 0, 1, '동부 하단 경사로 (경사도 18%)');
+    // Ramp 6 & 7: South-West Hill ramps: (2,11) elev 0 -> [slope at 3,11? Let's make (2,11) slope E 0->1] and (7,11) slope W 0->1
+    setSlope(2, 11, 'E', 0, 1, '남서 서측 경사로 (경사도 16%)');
+    setSlope(7, 11, 'W', 0, 1, '남서 동측 경사로 (경사도 16%)');
+
+    // --- E. Traffic / Roadwork Obstacles (방해요소 구역) ---
+    // Placed on select flat avenues so Obstacle Upgrade creates smart rerouting
+    grid[1][6].obstacle = true;
+    grid[1][6].districtName = '북부 순환로 (도로 공사 정체)';
+    grid[7][1].obstacle = true;
+    grid[7][1].districtName = '서부 대로 (출근길 교통 정체)';
+    grid[14][10].obstacle = true;
+    grid[14][10].districtName = '남부 우회로 (차량 사고 정체)';
+
+    // --- F. Central Hospital at (2, 2) connected to (2,1) & (1,2) ---
+    setRoad(2, 3, 0, '병원 응급 진입로');
+    setRoad(3, 2, 0, '병원 동측 진입로');
+    const hosp = grid[2][2];
+    hosp.type = 'hospital';
+    hosp.elev = 0;
+    hosp.districtName = '중앙 권역 응급의료센터';
+    hosp.obstacle = false;
+
+    // Give elevated buildings appropriate base elevation so they sit naturally on hills
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        const t = grid[y][x];
+        if (t.type === 'building') {
+          if (x >= 7 && x <= 10 && y >= 4 && y <= 8) t.elev = 1;
+          else if (x >= 12 && x <= 13 && y >= 3 && y <= 7) t.elev = 2;
+        }
+      }
+    }
+  }
+
+  initCityMap();
+
+  // =========================================================================
+  // 5. GRAPH NEIGHBORS & TERRAIN MOVEMENT COST
+  // =========================================================================
+  function isTraversable(t) {
+    return t && (t.type === 'road' || t.type === 'slope' || t.type === 'hospital');
+  }
+
+  function getElevationAtEdge(tile, dirFromTile) {
+    if (tile.type !== 'slope') return tile.elev;
+    // dirFromTile is 'N','S','E','W' edge of tile
+    if (tile.slopeDir === dirFromTile) return tile.elevHigh;
+    const opp = { N: 'S', S: 'N', E: 'W', W: 'E' };
+    if (opp[tile.slopeDir] === dirFromTile) return tile.elevLow;
+    return null; // cannot enter/exit perpendicular to a slope wall
+  }
+
+  function getNeighbors(gx, gy) {
+    const cur = grid[gy][gx];
+    if (!isTraversable(cur)) return [];
+    const dirs = [
+      { dx: 0, dy: -1, dir: 'N', opp: 'S' },
+      { dx: 1, dy: 0,  dir: 'E', opp: 'W' },
+      { dx: 0, dy: 1,  dir: 'S', opp: 'N' },
+      { dx: -1, dy: 0, dir: 'W', opp: 'E' }
+    ];
+    const res = [];
+    for (const d of dirs) {
+      const nx = gx + d.dx;
+      const ny = gy + d.dy;
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      const nxt = grid[ny][nx];
+      if (!isTraversable(nxt)) continue;
+
+      const curEdgeElev = getElevationAtEdge(cur, d.dir);
+      const nxtEdgeElev = getElevationAtEdge(nxt, d.opp);
+      if (curEdgeElev === null || nxtEdgeElev === null) continue;
+      if (Math.abs(curEdgeElev - nxtEdgeElev) > 0.05) continue; // must match elevation!
+      res.push(nxt);
+    }
+    return res;
+  }
+
+  // Physical speed multiplier on a tile (affects ambulance driving speed)
+  function getTileSpeedMultiplier(tile) {
+    let mult = 1.0;
+    if (tile.type === 'slope') {
+      // Steep slope slows ambulance down; Obstacle Lv.3 mitigates 30% of slope penalty
+      const basePenalty = 0.52;
+      const mitigation = state.upgrades.obstacles >= 3 ? 0.7 : 1.0;
+      mult *= (1 - basePenalty * mitigation);
+    }
+    if (tile.obstacle) {
+      mult *= 0.52;
+    }
+    return mult;
+  }
+
+  // Algorithmic traversal cost used by pathfinder depending on 'obstacles' upgrade level
+  function getAlgorithmStepCost(tile) {
+    const obsLvl = state.upgrades.obstacles;
+    if (obsLvl === 0) {
+      // Unweighted standard BFS: treats every tile as cost 1 (ignores slopes & traffic)
+      return 1.0;
+    } else if (obsLvl === 1) {
+      // Slope-aware: accounts for slope slowdown, still ignores traffic obstacles
+      return tile.type === 'slope' ? 2.4 : 1.0;
+    } else {
+      // Lv.2 & Lv.3: Full multi-obstacle + slope time-cost calculation
+      return 1.0 / getTileSpeedMultiplier(tile);
+    }
+  }
+
+  // =========================================================================
+  // 6. EMERGENCY PATIENTS SYSTEM
+  // =========================================================================
+  const PATIENT_NAMES = [
+    '급성 심근경색 환자', '고지대 등산객 골절', '교통사고 외상 환자',
+    '호흡곤란 응급 환자', '뇌졸중 의심 환자', '산업현장 화상 환자'
+  ];
+
+  let patients = [];
+  let nextPatientId = 1;
+
+  function getValidPatientSpawnTiles() {
+    const list = [];
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        const t = grid[y][x];
+        if (t.type === 'road' && !t.obstacle && !(x === 2 && y === 2)) {
+          // Avoid spawning right next to hospital
+          if (Math.hypot(x - 2, y - 2) >= 4) list.push(t);
+        }
+      }
+    }
+    return list;
+  }
+
+  function spawnPatient(forceElevated = false) {
+    if (patients.length >= 3) return;
+    let candidates = getValidPatientSpawnTiles().filter(t =>
+      !patients.some(p => p.gx === t.gx && p.gy === t.gy) &&
+      !(ambulance.gx === t.gx && ambulance.gy === t.gy)
+    );
+    if (forceElevated) {
+      const elevCand = candidates.filter(t => t.elev >= 1);
+      if (elevCand.length > 0) candidates = elevCand;
+    }
+    if (candidates.length === 0) return;
+    const tile = candidates[Math.floor(Math.random() * candidates.length)];
+    const baseCash = 180 + tile.elev * 65 + Math.floor(Math.random() * 45);
+    const baseRP = 35 + tile.elev * 15;
+    patients.push({
+      id: nextPatientId++,
+      gx: tile.gx,
+      gy: tile.gy,
+      elev: tile.elev,
+      label: PATIENT_NAMES[(nextPatientId - 2) % PATIENT_NAMES.length],
+      district: tile.districtName,
+      baseCash,
+      baseRP,
+      spawnTime: performance.now()
+    });
+    renderDispatchList();
+  }
+
+  // =========================================================================
+  // 7. AMBULANCE & BFS VISUALIZATION ENGINE
+  // =========================================================================
+  const ambulance = {
+    gx: 2,
+    gy: 3,
+    wx: (2 - GRID_W / 2 + 0.5) * TILE_SIZE,
+    wy: (3 - GRID_H / 2 + 0.5) * TILE_SIZE,
+    wz: 0,
+    heading: 0,
+    pitch: 0,
+    carrying: null,
+    path: [],       // array of tiles to traverse
+    pathIndex: 0,
+    segProgress: 0,
+    sirenPhase: 0
+  };
+
+  const bfsVisual = {
+    active: false,
+    searching: false,
+    steps: [],          // recorded snapshots of BFS expansion
+    stepCursor: 0,
+    visitedSet: new Set(),
+    frontierSet: new Set(),
+    parentMap: new Map(),
+    distMap: new Map(),
+    costMap: new Map(),
+    finalPath: [],
+    targetTile: null,
+    redundantCount: 0,
+    onCompleteCallback: null
+  };
+
+  function tileKey(gx, gy) {
+    return `${gx},${gy}`;
+  }
+
+  function runBFSAndDispatch(targetTile) {
+    if (!targetTile) return;
+    // If clicked on a non-traversable building, snap to nearest traversable neighbor
+    if (!isTraversable(targetTile)) {
+      let best = null;
+      let bestD = Infinity;
+      for (let y = 0; y < GRID_H; y++) {
+        for (let x = 0; x < GRID_W; x++) {
+          if (isTraversable(grid[y][x])) {
+            const d = Math.hypot(x - targetTile.gx, y - targetTile.gy);
+            if (d < bestD) { bestD = d; best = grid[y][x]; }
+          }
+        }
+      }
+      targetTile = best;
+    }
+    if (!targetTile) return;
+
+    // Determine start tile (if currently moving between tiles, start from current/next tile cleanly)
+    const startTile = grid[ambulance.gy][ambulance.gx];
+    if (startTile.gx === targetTile.gx && startTile.gy === targetTile.gy) {
+      checkTileArrival(startTile);
+      return;
+    }
+
+    // Perform BFS (or Cost-Aware Priority BFS when Obstacle Upgrade >= 1)
+    const visitedLvl = state.upgrades.visited;
+    const obsLvl = state.upgrades.obstacles;
+
+    const queue = [{ tile: startTile, cost: 0, dist: 0 }];
+    const visited = new Set([tileKey(startTile.gx, startTile.gy)]);
+    const parentMap = new Map();
+    const distMap = new Map([[tileKey(startTile.gx, startTile.gy), 0]]);
+    const costMap = new Map([[tileKey(startTile.gx, startTile.gy), 0]]);
+
+    const steps = [];
+    let found = false;
+    let redundantChecks = 0;
+
+    while (queue.length > 0) {
+      // If obstacle/slope weighting is unlocked, pop minimum accumulated cost (Best-First / Dijkstra-BFS)
+      if (obsLvl >= 1) {
+        queue.sort((a, b) => a.cost - b.cost);
+      }
+      const currentObj = queue.shift();
+      const cur = currentObj.tile;
+      const curKey = tileKey(cur.gx, cur.gy);
+
+      const neighbors = getNeighbors(cur.gx, cur.gy);
+      for (const nxt of neighbors) {
+        const nKey = tileKey(nxt.gx, nxt.gy);
+        const stepCost = getAlgorithmStepCost(nxt);
+        const newCost = currentObj.cost + stepCost;
+        const newDist = currentObj.dist + 1;
+
+        if (!visited.has(nKey)) {
+          visited.add(nKey);
+          parentMap.set(nKey, cur);
+          distMap.set(nKey, newDist);
+          costMap.set(nKey, newCost);
+          queue.push({ tile: nxt, cost: newCost, dist: newDist });
+        } else {
+          // Simulate redundant re-evaluation overhead if Visited Array upgrade is Lv.0
+          if (visitedLvl === 0) {
+            redundantChecks++;
+          } else if (obsLvl >= 1 && newCost < (costMap.get(nKey) ?? Infinity) - 0.001) {
+            parentMap.set(nKey, cur);
+            distMap.set(nKey, newDist);
+            costMap.set(nKey, newCost);
+            queue.push({ tile: nxt, cost: newCost, dist: newDist });
+          }
+        }
+      }
+
+      steps.push({
+        current: cur,
+        frontier: queue.map(q => q.tile),
+        visitedSnapshot: new Set(visited)
+      });
+
+      if (cur.gx === targetTile.gx && cur.gy === targetTile.gy) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      showToast('해당 구역으로 연결된 도로가 없습니다!');
+      return;
+    }
+
+    // Reconstruct path
+    const path = [];
+    let trace = targetTile;
+    while (trace) {
+      path.unshift(trace);
+      if (trace.gx === startTile.gx && trace.gy === startTile.gy) break;
+      trace = parentMap.get(tileKey(trace.gx, trace.gy));
+    }
+
+    // Calculate estimated time
+    const baseSpeed = 2.6 + state.upgrades.speed * 0.85;
+    let estSeconds = 0;
+    for (let i = 1; i < path.length; i++) {
+      estSeconds += 1 / (baseSpeed * getTileSpeedMultiplier(path[i]));
+    }
+
+    // Update BFS Visual State
+    bfsVisual.active = true;
+    bfsVisual.searching = true;
+    bfsVisual.steps = steps;
+    bfsVisual.stepCursor = 0;
+    bfsVisual.visitedSet = new Set();
+    bfsVisual.frontierSet = new Set();
+    bfsVisual.parentMap = parentMap;
+    bfsVisual.distMap = distMap;
+    bfsVisual.costMap = costMap;
+    bfsVisual.finalPath = path;
+    bfsVisual.targetTile = targetTile;
+    bfsVisual.redundantCount = redundantChecks;
+
+    // Grant small RP bonus for BFS exploration if Visited Lv.2+
+    if (visitedLvl >= 2) {
+      const bonusRP = Math.max(2, Math.floor(visited.size * 0.35));
+      state.rp += bonusRP;
+    }
+
+    // Update Telemetry UI
+    document.getElementById('statVisited').textContent = `${visited.size} 노드`;
+    document.getElementById('statRedundant').textContent =
+      visitedLvl === 0 ? `${redundantChecks} 회 (비효율)` : `0 회 (visited[] 차단)`;
+    document.getElementById('statPathInfo').textContent = `${path.length - 1} 칸 / ${estSeconds.toFixed(1)}초`;
+    updateStatusHUD('busy', `BFS 탐색 중... (${targetTile.districtName})`);
+
+    playTone(520, 'triangle', 0.09, 0.06);
+
+    bfsVisual.onCompleteCallback = () => {
+      // Immediately start moving ambulance along path!
+      ambulance.path = path;
+      ambulance.pathIndex = 0;
+      ambulance.segProgress = 0;
+      updateStatusHUD(
+        ambulance.carrying ? 'carrying' : 'busy',
+        ambulance.carrying
+          ? `환자 이송 중 → 중앙 병원으로 이동 (${path.length - 1}칸)`
+          : `출동 중 → ${targetTile.districtName} (${path.length - 1}칸)`
+      );
+      playTone(740, 'sine', 0.12, 0.07);
+    };
+  }
+
+  function checkTileArrival(tile) {
+    // 1. Check if patient is at this tile and ambulance is empty
+    const pIdx = patients.findIndex(p => p.gx === tile.gx && p.gy === tile.gy);
+    if (pIdx !== -1 && !ambulance.carrying) {
+      const picked = patients.splice(pIdx, 1)[0];
+      ambulance.carrying = picked;
+      renderDispatchList();
+      showToast(`🚑 [${picked.label}] 탑승 완료! 중앙 병원(좌상단)을 클릭해 이송하세요!`);
+      updateStatusHUD('carrying', `환자 탑승 중 (${picked.label}) — 중앙 병원을 클릭하세요!`);
+      playTone(620, 'sine', 0.1, 0.08, 0);
+      playTone(880, 'sine', 0.14, 0.08, 0.09);
+      return;
+    }
+
+    // 2. Check if arrived at Central Hospital while carrying a patient
+    if (tile.type === 'hospital' && ambulance.carrying) {
+      const p = ambulance.carrying;
+      ambulance.carrying = null;
+      const mult = 1 + state.upgrades.reward * 0.45;
+      const earnedCash = Math.round(p.baseCash * mult);
+      const earnedRP = Math.round(p.baseRP * (1 + state.upgrades.reward * 0.3));
+      state.cash += earnedCash;
+      state.rp += earnedRP;
+      state.rescuedCount += 1;
+
+      document.getElementById('statRescued').textContent = `${state.rescuedCount} 명`;
+      updateCurrencyUI();
+      showToast(`🏥 이송 완료! +$${earnedCash} 자금 / +${earnedRP} RP 획득!`);
+      updateStatusHUD('idle', '이송 완료! 다음 응급 호출 구역을 왼쪽 클릭하세요.');
+      playTone(523.25, 'triangle', 0.1, 0.08, 0);
+      playTone(659.25, 'triangle', 0.1, 0.08, 0.08);
+      playTone(783.99, 'triangle', 0.16, 0.09, 0.16);
+
+      spawnParticles(ambulance.wx, ambulance.wy, ambulance.wz + 18, '#ffd166', 22);
+      setTimeout(() => spawnPatient(Math.random() < 0.55), 600);
+      return;
+    }
+
+    // Arrived at general tile
+    updateStatusHUD(
+      ambulance.carrying ? 'carrying' : 'idle',
+      ambulance.carrying
+        ? `환자 탑승 중 — 중앙 병원(2,2)을 클릭해 이송하세요!`
+        : `${tile.districtName} 도착 완료. 다음 구역을 클릭하세요.`
+    );
+  }
+
+  // =========================================================================
+  // 8. PARTICLES & 3D CAMERA PROJECTION
+  // =========================================================================
+  const particles = [];
+  function spawnParticles(wx, wy, wz, color, count = 14) {
+    for (let i = 0; i < count; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const spd = 20 + Math.random() * 55;
+      particles.push({
+        wx, wy, wz,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        vz: 35 + Math.random() * 50,
+        life: 0.75 + Math.random() * 0.4,
+        maxLife: 1.1,
+        color
+      });
+    }
+  }
+
+  const camera = {
+    yaw: -0.72,          // 3D isometric-like rotation
+    pitch: 0.90,         // Tilted top-down angle
+    zoom: 1.05,
+    savedYaw: -0.72,
+    savedPitch: 0.90,
+    savedZoom: 1.05,
+    tacticalHold: false,
+    tacticalBlend: 0     // 0 = 3D City View, 1 = Top-Down Tactical Grid Maze View
+  };
+
+  function getEffectiveCamera() {
+    const b = camera.tacticalBlend;
+    // Smoothly interpolate toward pure north-up overhead tactical maze view when b -> 1
+    const yaw = camera.yaw * (1 - b) + 0 * b;
+    const pitch = camera.pitch * (1 - b) + (Math.PI / 2) * b;
+    const fitZoom = Math.min(window.innerWidth, window.innerHeight) / (GRID_W * TILE_SIZE * 1.24);
+    const zoom = camera.zoom * (1 - b) + fitZoom * b;
+    return { yaw, pitch, zoom, blend: b };
+  }
+
+  function project3D(wx, wy, wz, cam) {
+    const cosY = Math.cos(cam.yaw);
+    const sinY = Math.sin(cam.yaw);
+    const rx = wx * cosY - wy * sinY;
+    const ry = wx * sinY + wy * cosY;
+    const sinP = Math.sin(cam.pitch);
+    const cosP = Math.cos(cam.pitch);
+    const sx = canvas.width * 0.5 + rx * cam.zoom;
+    const sy = canvas.height * 0.47 + (ry * sinP - wz * cosP) * cam.zoom;
+    return { x: sx, y: sy, depth: ry };
+  }
+
+  function gridToWorld(gx, gy) {
+    return {
+      wx: (gx - GRID_W / 2 + 0.5) * TILE_SIZE,
+      wy: (gy - GRID_H / 2 + 0.5) * TILE_SIZE
+    };
+  }
+
+  function getTileSurfaceZ(tile, localU = 0.5, localV = 0.5, elevScale = 28) {
+    if (tile.type !== 'slope') return tile.elev * elevScale;
+    let t = 0.5;
+    if (tile.slopeDir === 'E') t = localU;
+    else if (tile.slopeDir === 'W') t = 1 - localU;
+    else if (tile.slopeDir === 'S') t = localV;
+    else if (tile.slopeDir === 'N') t = 1 - localV;
+    return (tile.elevLow + (tile.elevHigh - tile.elevLow) * t) * elevScale;
+  }
+
+  // =========================================================================
+  // 9. CANVAS RENDERING (3D CITY + SLOPES + BFS WAVES + TACTICAL MAZE)
+  // =========================================================================
+  const canvas = document.getElementById('cityCanvas');
+  const ctx = canvas.getContext('2d');
+  let hoverTile = null;
+  let renderedTilesOrder = [];
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function drawPoly(pts, fill, stroke = null, lineWidth = 1) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+  }
+
+  function pointInPoly(px, py, poly) {
+    if (!poly) return false;
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y;
+      const xj = poly[j].x, yj = poly[j].y;
+      const intersect = ((yi > py) !== (yj > py)) &&
+        (px < (xj - xi) * (py - yi) / ((yj - yi) || 1e-9) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function renderFrame(now) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const cam = getEffectiveCamera();
+    const elevScale = 28 * (1 - cam.blend);
+    const half = TILE_SIZE * 0.5;
+
+    // Subtle tactical blueprint grid background when in tactical view
+    if (cam.blend > 0.05) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(56, 189, 248, ${0.08 * cam.blend})`;
+      ctx.lineWidth = 1;
+      const step = 36;
+      for (let x = 0; x < canvas.width; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Collect & depth-sort all tiles (back-to-front Painter's Algorithm)
+    const allTiles = [];
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        const t = grid[y][x];
+        const { wx, wy } = gridToWorld(x, y);
+        const centerProj = project3D(wx, wy, t.elev * elevScale, cam);
+        t.depth = centerProj.depth + t.elev * 2;
+        allTiles.push(t);
+      }
+    }
+    allTiles.sort((a, b) => a.depth - b.depth);
+    renderedTilesOrder = allTiles;
+
+    // Fast path lookup set
+    const pathSet = new Set(bfsVisual.finalPath.map(t => tileKey(t.gx, t.gy)));
+
+    // Draw each tile
+    for (const t of allTiles) {
+      const { wx, wy } = gridToWorld(t.gx, t.gy);
+      const k = tileKey(t.gx, t.gy);
+
+      // Corner heights (handles sloped ramps seamlessly!)
+      const z00 = getTileSurfaceZ(t, 0, 0, elevScale);
+      const z10 = getTileSurfaceZ(t, 1, 0, elevScale);
+      const z11 = getTileSurfaceZ(t, 1, 1, elevScale);
+      const z01 = getTileSurfaceZ(t, 0, 1, elevScale);
+
+      const p00 = project3D(wx - half, wy - half, z00, cam);
+      const p10 = project3D(wx + half, wy - half, z10, cam);
+      const p11 = project3D(wx + half, wy + half, z11, cam);
+      const p01 = project3D(wx - half, wy + half, z01, cam);
+      const topPoly = [p00, p10, p11, p01];
+      t.screenPoly = topPoly;
+
+      // Draw 3D Earth/Foundation Side Skirt for elevated roads & slopes
+      if (elevScale > 1 && (t.elev > 0 || t.type === 'slope')) {
+        const b00 = project3D(wx - half, wy - half, 0, cam);
+        const b10 = project3D(wx + half, wy - half, 0, cam);
+        const b11 = project3D(wx + half, wy + half, 0, cam);
+        const b01 = project3D(wx - half, wy + half, 0, cam);
+        const sides = [
+          [p00, p10, b10, b00, '#4a3024'],
+          [p10, p11, b11, b10, '#3a241b'],
+          [p11, p01, b01, b11, '#58392b'],
+          [p01, p00, b00, b01, '#432b20']
+        ];
+        for (const [s0, s1, sb1, sb0, col] of sides) {
+          drawPoly([s0, s1, sb1, sb0], col, 'rgba(20,12,8,0.45)', 0.8);
+        }
+      }
+
+      // --- Tile Top Surface Styling ---
+      if (t.type === 'building') {
+        if (cam.blend > 0.72) {
+          // Tactical Grid Maze Wall Block
+          const fill = t.bStyle === 0 ? '#3d261c' : '#132842';
+          drawPoly(topPoly, fill, '#6d4c3d', 1.4);
+          // Hatch X inside maze wall
+          ctx.strokeStyle = 'rgba(184, 139, 109, 0.25)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p00.x, p00.y); ctx.lineTo(p11.x, p11.y);
+          ctx.moveTo(p10.x, p10.y); ctx.lineTo(p01.x, p01.y);
+          ctx.stroke();
+        } else {
+          // 3D Extruded Building
+          const bh = t.bHeight * (1 - cam.blend);
+          const baseZ = t.elev * elevScale;
+          const roofZ = baseZ + bh;
+          const r00 = project3D(wx - half + 2, wy - half + 2, roofZ, cam);
+          const r10 = project3D(wx + half - 2, wy - half + 2, roofZ, cam);
+          const r11 = project3D(wx + half - 2, wy + half - 2, roofZ, cam);
+          const r01 = project3D(wx - half + 2, wy + half - 2, roofZ, cam);
+
+          const f00 = project3D(wx - half + 2, wy - half + 2, baseZ, cam);
+          const f10 = project3D(wx + half - 2, wy - half + 2, baseZ, cam);
+          const f11 = project3D(wx + half - 2, wy + half - 2, baseZ, cam);
+          const f01 = project3D(wx - half + 2, wy + half - 2, baseZ, cam);
+
+          drawPoly([f00, f10, f11, f01], '#09121e', '#1e3552', 1);
+
+          // Draw 4 building walls sorted by face center depth
+          const faces = [
+            { pts: [r00, r10, f10, f00], d: (f00.depth + f10.depth) * 0.5, shade: 0 },
+            { pts: [r10, r11, f11, f10], d: (f10.depth + f11.depth) * 0.5, shade: 1 },
+            { pts: [r11, r01, f01, f11], d: (f11.depth + f01.depth) * 0.5, shade: 2 },
+            { pts: [r01, r00, f00, f01], d: (f01.depth + f00.depth) * 0.5, shade: 3 }
+          ];
+          faces.sort((a, b) => a.d - b.d);
+
+          for (const f of faces) {
+            let wallCol;
+            if (t.bStyle === 0) {
+              // Architectural Brown Brick Tower
+              wallCol = ['#5c3b2c', '#492e22', '#6e4736', '#523426'][f.shade];
+            } else {
+              // Dark Blue Glass Skyscraper
+              wallCol = ['#183456', '#11253e', '#204570', '#142c49'][f.shade];
+            }
+            drawPoly(f.pts, wallCol, 'rgba(238, 180, 79, 0.22)', 0.9);
+          }
+
+          // Roof
+          const roofCol = t.bStyle === 0 ? '#78503d' : '#244b78';
+          drawPoly([r00, r10, r11, r01], roofCol, '#b88b6d', 1.2);
+
+          // Inner roof mechanical pad
+          const m00 = project3D(wx - half * 0.45, wy - half * 0.45, roofZ + 1, cam);
+          const m10 = project3D(wx + half * 0.45, wy - half * 0.45, roofZ + 1, cam);
+          const m11 = project3D(wx + half * 0.45, wy + half * 0.45, roofZ + 1, cam);
+          const m01 = project3D(wx - half * 0.45, wy + half * 0.45, roofZ + 1, cam);
+          drawPoly([m00, m10, m11, m01], t.bStyle === 0 ? '#4e3124' : '#152c47');
+        }
+        continue;
+      }
+
+      // --- Road / Slope / Hospital Surface ---
+      let surfaceFill = '#132842'; // Dark blue lowland road
+      let borderCol = 'rgba(56, 189, 248, 0.22)';
+
+      if (t.type === 'slope') {
+        surfaceFill = '#6b4735'; // Distinct warm brown sloped ramp
+        borderCol = '#eeb44f';
+      } else if (t.elev === 1) {
+        surfaceFill = '#4b3226'; // Mid-elevation brown terrace road
+        borderCol = 'rgba(184, 139, 109, 0.45)';
+      } else if (t.elev === 2) {
+        surfaceFill = '#3a251c'; // Highland chestnut ridge road
+        borderCol = 'rgba(238, 180, 79, 0.55)';
+      }
+
+      if (t.type === 'hospital') {
+        surfaceFill = '#1d4ed8';
+        borderCol = '#ffd166';
+      }
+
+      drawPoly(topPoly, surfaceFill, borderCol, cam.blend > 0.5 ? 1.5 : 1.0);
+
+      // Center road dashed line (subtle)
+      const cProj = project3D(wx, wy, (z00 + z11) * 0.5 + 0.5, cam);
+      ctx.fillStyle = 'rgba(243, 239, 233, 0.22)';
+      ctx.beginPath();
+      ctx.arc(cProj.x, cProj.y, 1.8 * cam.zoom, 0, Math.PI * 2);
+      ctx.fill();
+
+      // --- Slope Incline Chevrons & Indicator ---
+      if (t.type === 'slope') {
+        const dirVec = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[t.slopeDir];
+        const pStart = project3D(wx - dirVec[0] * 10, wy - dirVec[1] * 10, (z00 + z11) * 0.5 + 1, cam);
+        const pEnd = project3D(wx + dirVec[0] * 10, wy + dirVec[1] * 10, (z00 + z11) * 0.5 + 1, cam);
+        ctx.strokeStyle = '#ffd166';
+        ctx.lineWidth = 2.2 * cam.zoom;
+        ctx.beginPath();
+        ctx.moveTo(pStart.x, pStart.y);
+        ctx.lineTo(pEnd.x, pEnd.y);
+        ctx.stroke();
+
+        // Arrowhead
+        const ang = Math.atan2(pEnd.y - pStart.y, pEnd.x - pStart.x);
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath();
+        ctx.moveTo(pEnd.x, pEnd.y);
+        ctx.lineTo(pEnd.x - 7 * Math.cos(ang - 0.5), pEnd.y - 7 * Math.sin(ang - 0.5));
+        ctx.lineTo(pEnd.x - 7 * Math.cos(ang + 0.5), pEnd.y - 7 * Math.sin(ang + 0.5));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // --- Traffic / Roadwork Obstacle Overlay ---
+      if (t.obstacle) {
+        drawPoly(topPoly, 'rgba(234, 88, 12, 0.34)', '#fb923c', 1.6);
+        if (sprites.traffic.loaded) {
+          const sz = 20 * cam.zoom;
+          ctx.drawImage(sprites.traffic, cProj.x - sz / 2, cProj.y - sz / 2, sz, sz);
+        }
+      }
+
+      // --- BFS Visited & Frontier Wave Overlay ---
+      const isFrontier = bfsVisual.frontierSet.has(k);
+      const isVisited = bfsVisual.visitedSet.has(k);
+      const isOnPath = pathSet.has(k);
+
+      if (isVisited) {
+        const alpha = state.upgrades.visited >= 1 ? 0.36 : 0.16;
+        drawPoly(topPoly, `rgba(56, 189, 248, ${alpha})`, 'rgba(56, 189, 248, 0.6)', 1.2);
+
+        // Visited Lv.2+: Draw parent pointer line
+        if (state.upgrades.visited >= 2 && bfsVisual.parentMap.has(k)) {
+          const par = bfsVisual.parentMap.get(k);
+          const pw = gridToWorld(par.gx, par.gy);
+          const pz = par.elev * elevScale + 1;
+          const pPar = project3D(pw.wx, pw.wy, pz, cam);
+          ctx.strokeStyle = 'rgba(125, 211, 252, 0.65)';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(cProj.x, cProj.y);
+          ctx.lineTo(pPar.x, pPar.y);
+          ctx.stroke();
+        }
+
+        // Visited Lv.3: Draw BFS step distance number
+        if (state.upgrades.visited >= 3 && bfsVisual.distMap.has(k)) {
+          ctx.fillStyle = '#e0f2fe';
+          ctx.font = `bold ${Math.max(9, Math.round(10 * cam.zoom))}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(bfsVisual.distMap.get(k), cProj.x, cProj.y);
+        }
+      }
+
+      if (isFrontier) {
+        drawPoly(topPoly, 'rgba(56, 189, 248, 0.68)', '#ffffff', 2);
+      }
+
+      if (isOnPath) {
+        drawPoly(topPoly, 'rgba(255, 209, 102, 0.42)', '#ffd166', 2.2);
+      }
+
+      // Tactical Mode Cost Overlay (when Obstacle Upgrade Lv.2+)
+      if (cam.blend > 0.65 && state.upgrades.obstacles >= 2 && !isOnPath) {
+        const cost = getAlgorithmStepCost(t);
+        if (cost > 1.05) {
+          ctx.fillStyle = '#fb923c';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`x${cost.toFixed(1)}`, cProj.x, cProj.y + 9);
+        }
+      }
+
+      // --- Hover Highlight ---
+      if (hoverTile && hoverTile.gx === t.gx && hoverTile.gy === t.gy) {
+        drawPoly(topPoly, 'rgba(255, 255, 255, 0.22)', '#ffd166', 2.5);
+      }
+
+      // --- Central Hospital 3D Structure ---
+      if (t.type === 'hospital') {
+        if (cam.blend < 0.72) {
+          const hh = 42 * (1 - cam.blend);
+          const r00 = project3D(wx - half + 4, wy - half + 4, hh, cam);
+          const r10 = project3D(wx + half - 4, wy - half + 4, hh, cam);
+          const r11 = project3D(wx + half - 4, wy + half - 4, hh, cam);
+          const r01 = project3D(wx - half + 4, wy + half - 4, hh, cam);
+          drawPoly([r00, r10, p10, p00], '#1e3a8a', '#ffd166', 1);
+          drawPoly([r10, r11, p11, p10], '#172554', '#ffd166', 1);
+          drawPoly([r11, r01, p01, p11], '#2563eb', '#ffd166', 1);
+          drawPoly([r01, r00, p00, p01], '#1d4ed8', '#ffd166', 1);
+          drawPoly([r00, r10, r11, r01], '#eff6ff', '#ef4444', 2);
+
+          const topCenter = project3D(wx, wy, hh + 14, cam);
+          if (sprites.hospital.loaded) {
+            const sz = 36 * cam.zoom;
+            ctx.drawImage(sprites.hospital, topCenter.x - sz / 2, topCenter.y - sz / 2, sz, sz);
+          }
+        } else if (sprites.hospital.loaded) {
+          const sz = 28 * cam.zoom;
+          ctx.drawImage(sprites.hospital, cProj.x - sz / 2, cProj.y - sz / 2, sz, sz);
+        }
+      }
+    }
+
+    // --- Draw Animated Path Line ---
+    if (bfsVisual.finalPath.length > 1) {
+      ctx.save();
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 3.5 * cam.zoom;
+      ctx.setLineDash([8, 6]);
+      ctx.lineDashOffset = -now * 0.04;
+      ctx.beginPath();
+      bfsVisual.finalPath.forEach((pt, idx) => {
+        const w = gridToWorld(pt.gx, pt.gy);
+        const p = project3D(w.wx, w.wy, pt.elev * elevScale + 3, cam);
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // --- Draw Emergency Patients Beacons ---
+    const pulse = 0.5 + 0.5 * Math.sin(now * 0.007);
+    for (const pat of patients) {
+      const w = gridToWorld(pat.gx, pat.gy);
+      const pz = pat.elev * elevScale;
+      const baseP = project3D(w.wx, w.wy, pz + 2, cam);
+      const floatP = project3D(w.wx, w.wy, pz + (18 + pulse * 6) * (1 - cam.blend * 0.8), cam);
+
+      // Pulsing SOS Ring on ground
+      ctx.strokeStyle = `rgba(239, 68, 68, ${0.45 + pulse * 0.45})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(baseP.x, baseP.y, (12 + pulse * 8) * cam.zoom, 0, Math.PI * 2);
+      ctx.stroke();
+
+      if (sprites.patient.loaded) {
+        const sz = 30 * cam.zoom;
+        ctx.drawImage(sprites.patient, floatP.x - sz / 2, floatP.y - sz / 2, sz, sz);
+      } else {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(floatP.x, floatP.y, 10 * cam.zoom, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // --- Draw 3D Ambulance ---
+    drawAmbulance(now, cam, elevScale);
+
+    // --- Draw Celebration Particles ---
+    for (const pt of particles) {
+      const sp = project3D(pt.wx, pt.wy, pt.wz * (1 - cam.blend), cam);
+      ctx.fillStyle = pt.color;
+      ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 3.5 * cam.zoom, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawAmbulance(now, cam, elevScale) {
+    const scaleZ = (elevScale / 28);
+    const az = ambulance.wz * scaleZ;
+    const pGround = project3D(ambulance.wx, ambulance.wy, az + 1, cam);
+    const pBody = project3D(ambulance.wx, ambulance.wy, az + 8 * (1 - cam.blend * 0.7), cam);
+
+    // Ground shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(pGround.x, pGround.y, 15 * cam.zoom, 10 * cam.zoom, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Carrying aura ring
+    if (ambulance.carrying) {
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(pGround.x, pGround.y, 19 * cam.zoom, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Draw Ambulance 3D Box + Sprite Badge
+    ctx.save();
+    ctx.translate(pBody.x, pBody.y);
+    const sz = 34 * cam.zoom;
+    if (sprites.ambulance.loaded) {
+      ctx.drawImage(sprites.ambulance, -sz / 2, -sz / 2, sz, sz);
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-12 * cam.zoom, -8 * cam.zoom, 24 * cam.zoom, 16 * cam.zoom);
+    }
+
+    // Flashing red/blue siren beacon on top
+    const sirenRed = Math.sin(now * 0.018) > 0;
+    ctx.fillStyle = sirenRed ? '#ef4444' : '#38bdf8';
+    ctx.shadowColor = sirenRed ? '#ef4444' : '#38bdf8';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(0, -sz * 0.36, 4 * cam.zoom, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // =========================================================================
+  // 10. SIMULATION UPDATE LOOP (BFS Wave Animation + Ambulance Physics)
+  // =========================================================================
+  let lastTime = performance.now();
+  let bfsStepAccumulator = 0;
+
+  function updateSimulation(dt) {
+    // 1. Smoothly animate Tactical View camera blend
+    const targetBlend = camera.tacticalHold ? 1 : 0;
+    camera.tacticalBlend += (targetBlend - camera.tacticalBlend) * Math.min(1, dt * 11);
+
+    // 2. Advance visual BFS wave expansion
+    if (bfsVisual.searching && bfsVisual.steps.length > 0) {
+      // Visited upgrade accelerates BFS wave scanning speed!
+      const waveRate = state.upgrades.visited === 0 ? 28 : (55 + state.upgrades.visited * 30);
+      bfsStepAccumulator += dt * waveRate;
+      while (bfsStepAccumulator >= 1 && bfsVisual.searching) {
+        bfsStepAccumulator -= 1;
+        const step = bfsVisual.steps[bfsVisual.stepCursor];
+        if (step) {
+          bfsVisual.visitedSet = step.visitedSnapshot;
+          bfsVisual.frontierSet = new Set(step.frontier.map(t => tileKey(t.gx, t.gy)));
+          playTone(340 + bfsVisual.stepCursor * 9, 'sine', 0.035, 0.02);
+          bfsVisual.stepCursor++;
+        }
+        if (bfsVisual.stepCursor >= bfsVisual.steps.length) {
+          bfsVisual.searching = false;
+          bfsVisual.frontierSet.clear();
+          if (bfsVisual.onCompleteCallback) bfsVisual.onCompleteCallback();
+        }
+      }
+    }
+
+    // 3. Move Ambulance along discovered BFS shortest path
+    if (!bfsVisual.searching && ambulance.path.length > 1 && ambulance.pathIndex < ambulance.path.length - 1) {
+      const curTile = ambulance.path[ambulance.pathIndex];
+      const nxtTile = ambulance.path[ambulance.pathIndex + 1];
+
+      const baseSpeed = 2.6 + state.upgrades.speed * 0.85; // tiles per second
+      const terrainMult = getTileSpeedMultiplier(nxtTile);
+      const effectiveSpeed = baseSpeed * terrainMult;
+
+      ambulance.segProgress += effectiveSpeed * dt;
+
+      if (nxtTile.type === 'slope' && Math.random() < dt * 2.5) {
+        updateStatusHUD(
+          ambulance.carrying ? 'carrying' : 'busy',
+          `⚠️ 경사 구역 주행 중! 속도 ${Math.round(terrainMult * 100)}%로 감속`
+        );
+      }
+
+      if (ambulance.segProgress >= 1) {
+        ambulance.segProgress = 0;
+        ambulance.pathIndex++;
+        ambulance.gx = nxtTile.gx;
+        ambulance.gy = nxtTile.gy;
+        const w = gridToWorld(ambulance.gx, ambulance.gy);
+        ambulance.wx = w.wx;
+        ambulance.wy = w.wy;
+        ambulance.wz = nxtTile.elev * 28;
+
+        // Check if arrived at final target of path
+        if (ambulance.pathIndex >= ambulance.path.length - 1) {
+          ambulance.path = [];
+          checkTileArrival(nxtTile);
+        }
+      } else {
+        const w0 = gridToWorld(curTile.gx, curTile.gy);
+        const w1 = gridToWorld(nxtTile.gx, nxtTile.gy);
+        const t = ambulance.segProgress;
+        ambulance.wx = w0.wx + (w1.wx - w0.wx) * t;
+        ambulance.wy = w0.wy + (w1.wy - w0.wy) * t;
+        const z0 = curTile.elev * 28;
+        const z1 = nxtTile.elev * 28;
+        ambulance.wz = z0 + (z1 - z0) * t;
+      }
+    }
+
+    // 4. Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.wx += p.vx * dt;
+      p.wy += p.vy * dt;
+      p.wz += p.vz * dt;
+      p.vz -= 90 * dt;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function mainLoop(now) {
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+    updateSimulation(dt);
+    renderFrame(now);
+    requestAnimationFrame(mainLoop);
+  }
+
+  // =========================================================================
+  // 11. INPUT CONTROLS (Left Click BFS, Right Drag Camera, Middle Hold Tactical)
+  // =========================================================================
+  let isRightDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let pointerDownX = 0;
+  let pointerDownY = 0;
+
+  function pickTileAt(mx, my) {
+    // Iterate front-to-back (reverse painter's order)
+    for (let i = renderedTilesOrder.length - 1; i >= 0; i--) {
+      const t = renderedTilesOrder[i];
+      if (pointInPoly(mx, my, t.screenPoly)) {
+        return t;
+      }
+    }
+    return null;
+  }
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) {
+      pointerDownX = e.clientX;
+      pointerDownY = e.clientY;
+    } else if (e.button === 2) {
+      isRightDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      canvas.style.cursor = 'grabbing';
+    } else if (e.button === 1) {
+      // Middle Mouse Wheel Hold -> Enter Tactical Grid Maze View!
+      e.preventDefault();
+      if (!camera.tacticalHold) {
+        camera.savedYaw = camera.yaw;
+        camera.savedPitch = camera.pitch;
+        camera.savedZoom = camera.zoom;
+        camera.tacticalHold = true;
+        document.getElementById('tacticalBanner').classList.add('active');
+        playTone(440, 'triangle', 0.08, 0.05);
+      }
+    }
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (isRightDragging && !camera.tacticalHold) {
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      camera.yaw += dx * 0.0075;
+      camera.pitch = Math.max(0.50, Math.min(1.40, camera.pitch + dy * 0.006));
+      return;
+    }
+    hoverTile = pickTileAt(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('mouseup', e => {
+    if (e.button === 0) {
+      // Check if click happened on canvas (not dragging)
+      if (e.target === canvas && Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) < 8) {
+        const clickedTile = pickTileAt(e.clientX, e.clientY);
+        if (clickedTile) {
+          runBFSAndDispatch(clickedTile);
+        }
+      }
+    } else if (e.button === 2) {
+      isRightDragging = false;
+      canvas.style.cursor = 'crosshair';
+    } else if (e.button === 1) {
+      // Release Middle Mouse Wheel -> Return smoothly to 3D Camera!
+      if (camera.tacticalHold) {
+        camera.tacticalHold = false;
+        camera.yaw = camera.savedYaw;
+        camera.pitch = camera.savedPitch;
+        camera.zoom = camera.savedZoom;
+        document.getElementById('tacticalBanner').classList.remove('active');
+        playTone(330, 'triangle', 0.08, 0.05);
+      }
+    }
+  });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (camera.tacticalHold) return;
+    const factor = e.deltaY < 0 ? 1.08 : 0.92;
+    camera.zoom = Math.max(0.65, Math.min(1.9, camera.zoom * factor));
+  }, { passive: false });
+
+  // =========================================================================
+  // 12. HUD, DISPATCH LIST & UPGRADE SHOP UI
+  // =========================================================================
+  function updateStatusHUD(mode, text) {
+    const dot = document.getElementById('statusDot');
+    dot.className = 'pulse-dot' + (mode === 'busy' ? ' busy' : mode === 'carrying' ? ' carrying' : '');
+    document.getElementById('statusText').textContent = text;
+  }
+
+  function updateCurrencyUI() {
+    document.getElementById('uiCash').textContent = `$${state.cash.toLocaleString()}`;
+    document.getElementById('uiRP').textContent = `${state.rp.toLocaleString()} RP`;
+
+    // Check if any upgrade is affordable
+    let canBuyAny = false;
+    for (const def of UPGRADE_DEFS) {
+      const lvl = state.upgrades[def.key];
+      if (lvl < def.maxLevel) {
+        const c = def.costs[lvl];
+        if (state.cash >= c.cash && state.rp >= c.rp) canBuyAny = true;
+      }
+    }
+    document.getElementById('shopBadge').style.display = canBuyAny ? 'inline-block' : 'none';
+
+    // Update Algorithm Telemetry Badge
+    const obsLvl = state.upgrades.obstacles;
+    const visLvl = state.upgrades.visited;
+    let modeName = '기본 BFS (무가중치 탐색)';
+    if (obsLvl >= 2) modeName = '경사도·정체 통합 최단시간 탐색';
+    else if (obsLvl === 1) modeName = '경사도 가중치 우회 BFS';
+    else if (visLvl >= 1) modeName = '방문기록 최적화 BFS (visited[])';
+
+    const totalStage = 1 + state.upgrades.speed + state.upgrades.reward + visLvl + obsLvl;
+    document.getElementById('algoModeText').textContent = modeName;
+    document.getElementById('algoTierTag').textContent = `LV.${totalStage}`;
+  }
+
+  function renderDispatchList() {
+    const box = document.getElementById('dispatchList');
+    box.innerHTML = '';
+    if (patients.length === 0) {
+      box.innerHTML = '<div style="font-size:11.5px;color:#b8c4d4;padding:6px;">대기 중인 응급 환자가 없습니다. 곧 새 호출이 접수됩니다...</div>';
+      return;
+    }
+    const mult = 1 + state.upgrades.reward * 0.45;
+    for (const p of patients) {
+      const card = document.createElement('div');
+      card.className = 'dispatch-card';
+      card.innerHTML = `
+        <img src="./img/patient.png" alt="SOS" onerror="this.style.display='none'" />
+        <div class="dispatch-info">
+          <strong>${p.label}</strong>
+          <span>${p.district} (${p.gx}, ${p.gy})</span>
+        </div>
+        <div class="dispatch-reward">+$${Math.round(p.baseCash * mult)}<br><small style="color:#38bdf8;">+${p.baseRP} RP</small></div>
+      `;
+      card.onclick = () => runBFSAndDispatch(grid[p.gy][p.gx]);
+      box.appendChild(card);
+    }
+  }
+
+  function renderShopModal() {
+    const gridEl = document.getElementById('upgradeGrid');
+    gridEl.innerHTML = '';
+
+    for (const def of UPGRADE_DEFS) {
+      const lvl = state.upgrades[def.key];
+      const isMax = lvl >= def.maxLevel;
+      const cost = isMax ? null : def.costs[lvl];
+      const affordable = !isMax && state.cash >= cost.cash && state.rp >= cost.rp;
+
+      const card = document.createElement('div');
+      card.className = 'upgrade-card';
+      card.innerHTML = `
+        <div class="upg-top">
+          <img src="${def.icon}" alt="${def.title}" onerror="this.style.display='none'" />
+          <div class="upg-head">
+            <div class="upg-title-row">
+              <h3>${def.title}</h3>
+              <span class="lvl-pill">Lv.${lvl} / ${def.maxLevel}</span>
+            </div>
+            <div class="upg-desc">${def.desc}</div>
+          </div>
+        </div>
+        <div class="upg-effect">${def.effectText(lvl)}</div>
+        <button class="upg-buy-btn" ${(!affordable || isMax) ? 'disabled' : ''}>
+          ${isMax
+            ? '✅ 최고 레벨 연구 완료'
+            : `<span>업그레이드 구매</span> <span>💰 $${cost.cash}</span> <span>🧬 ${cost.rp} RP</span>`}
+        </button>
+      `;
+
+      const btn = card.querySelector('button');
+      if (!isMax) {
+        btn.onclick = () => {
+          if (state.cash < cost.cash || state.rp < cost.rp) return;
+          state.cash -= cost.cash;
+          state.rp -= cost.rp;
+          state.upgrades[def.key] += 1;
+          updateCurrencyUI();
+          renderDispatchList();
+          renderShopModal();
+          showToast(`⚡ [${def.title}] Lv.${state.upgrades[def.key]} 업그레이드 완료!`);
+          playTone(587.33, 'triangle', 0.1, 0.08, 0);
+          playTone(880, 'triangle', 0.15, 0.09, 0.08);
+        };
+      }
+      gridEl.appendChild(card);
+    }
+  }
+
+  function showToast(msg) {
+    const container = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.3s';
+      setTimeout(() => el.remove(), 320);
+    }, 2900);
+  }
+
+  // Modal & Top Buttons
+  const shopOverlay = document.getElementById('shopModalOverlay');
+  document.getElementById('btnOpenShop').onclick = () => {
+    renderShopModal();
+    shopOverlay.classList.add('open');
+  };
+  document.getElementById('btnCloseShop').onclick = () => shopOverlay.classList.remove('open');
+  shopOverlay.addEventListener('click', e => {
+    if (e.target === shopOverlay) shopOverlay.classList.remove('open');
+  });
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') shopOverlay.classList.remove('open');
+    if (e.key === 'b' || e.key === 'B') {
+      if (shopOverlay.classList.contains('open')) shopOverlay.classList.remove('open');
+      else { renderShopModal(); shopOverlay.classList.add('open'); }
+    }
+  });
+
+  document.getElementById('btnSound').onclick = (e) => {
+    soundEnabled = !soundEnabled;
+    e.target.textContent = soundEnabled ? '🔊 ON' : '🔇 OFF';
+  };
+
+  document.getElementById('btnResetCam').onclick = () => {
+    camera.yaw = -0.72;
+    camera.pitch = 0.90;
+    camera.zoom = 1.05;
+    showToast('🎥 3D 기본 탑뷰 카메라 시점으로 초기화했습니다.');
+  };
+
+  // =========================================================================
+  // 13. INITIALIZE GAME SESSION
+  // =========================================================================
+  spawnPatient(false);
+  spawnPatient(true); // Spawn one on elevated/sloped side to immediately highlight slopes!
+  updateCurrencyUI();
+  renderDispatchList();
+
+  // Periodic patient spawn check
+  setInterval(() => {
+    if (patients.length < 3) spawnPatient(Math.random() < 0.5);
+  }, 9000);
+
+  requestAnimationFrame(mainLoop);
+})();
+</script>
+</body>
+</html>
