@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFS 응급환자 이송 시뮬레이터</title>
+<style>
+:root{--navy:#13243a;--blue:#2878d0;--cyan:#dff3ff;--red:#e94b58;--green:#16a36a;--ink:#203044;--muted:#718096;--line:#dce5ef;--bg:#f3f6fa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,"Noto Sans KR",sans-serif}
+header{background:linear-gradient(115deg,#14283f,#20527a);color:white;padding:26px max(20px,calc((100% - 1200px)/2))}
+header .eyebrow{font-size:12px;letter-spacing:2px;color:#a9d9ff;font-weight:bold}
+header h1{margin:8px 0;font-size:clamp(23px,4vw,34px)}header p{margin:0;color:#d6e6f3;line-height:1.6}
+main{max-width:1200px;margin:22px auto;padding:0 18px 40px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.85fr);gap:18px}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 5px 18px #1a35500b}
+.panel h2{font-size:18px;margin:0 0 12px}.sub{font-size:13px;color:var(--muted);line-height:1.6}
+.map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#526174}.dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;margin:16px auto 12px;max-width:650px;touch-action:manipulation}
+.cell{aspect-ratio:1;border:1px solid #d8e1eb;border-radius:6px;background:#f8fafc;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;min-width:0;transition:.12s}
+.cell:hover{outline:2px solid #8ab8e8;z-index:1}.cell .coord{position:absolute;left:3px;top:2px;font-size:8px;color:#9aa8b8}
+.cell.start{background:#ffe4e6;border-color:#f5a2aa}.cell.hospital{background:#dcfce9;border-color:#79d7a5}.cell.wall{background:#526174;border-color:#526174}.cell.visited{background:#dceeff;border-color:#9ac9f2}.cell.current{background:#ffd66b;border:2px solid #e2a800}.cell.path{background:#75d7b1;border-color:#2aa879}
+.cell img{width:68%;height:68%;object-fit:contain;pointer-events:none}.cell .wallmark{color:white;font-size:17px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button,.tool{border:0;border-radius:9px;padding:10px 13px;font-weight:700;cursor:pointer;font-size:13px;background:#eaf1f8;color:#29415c}
+button.primary{background:var(--blue);color:white}button.dark{background:var(--navy);color:white}button.red{background:#fff0f1;color:#c73542}button.green{background:#e6f8ef;color:#087b4d}button:disabled{opacity:.4;cursor:not-allowed}
+.tool.active{background:#dceeff;color:#135da5;box-shadow:inset 0 0 0 2px #6da9e6}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+label{font-size:12px;font-weight:bold;color:#526174;display:block;margin-bottom:5px}
+select,input{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:white;color:var(--ink)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.stepbar{height:8px;background:#edf2f7;border-radius:99px;overflow:hidden;margin:12px 0}.stepbar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2e83d8,#19ad80);transition:width .2s}
+.status{background:#f2f7fc;border-radius:11px;padding:12px;font-size:13px;line-height:1.6;min-height:62px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.stat{background:#f6f9fc;border:1px solid #e7edf4;border-radius:11px;padding:11px}.stat b{display:block;font-size:22px;color:#174e80}.stat span{font-size:11px;color:var(--muted)}
+#log{height:215px;overflow:auto;background:#101e30;color:#d9e8f6;border-radius:11px;padding:12px;font:12px/1.75 ui-monospace,monospace}
+.logline{border-bottom:1px solid #ffffff12;padding:2px 0}.logline strong{color:#80d7ff}
+.note{background:#fff8e8;border:1px solid #f5dfaa;border-radius:11px;padding:12px;font-size:12px;line-height:1.65;color:#70531b;margin-top:14px}
+.explain{font-size:13px;line-height:1.75;color:#4d5d70}.explain ol{padding-left:20px}
+@media(max-width:850px){main{grid-template-columns:1fr}#grid{gap:3px}.cell{border-radius:4px}.cell .coord{font-size:7px}}
+@media(max-width:430px){header{padding:22px 17px}main{padding:0 10px 25px;margin-top:12px}.panel{padding:13px}.stats{gap:5px}.stat{padding:8px}.stat b{font-size:18px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="eyebrow">ALGORITHM SIMULATOR · BREADTH-FIRST SEARCH</div>
+ <h1>🚑 응급환자 이송 및 의료 접근성</h1>
+ <p>BFS 알고리즘으로 응급환자에게 가장 가까운 병원을 찾아보세요.<br>지도에 직접 조건을 설정하고 탐색 과정을 한 단계씩 체험할 수 있습니다.</p>
+</header>
+<main>
+<section class="panel">
+ <div class="map-head"><div><h2>① 도시 도로 지도</h2><div class="sub">아래 도구를 선택한 뒤 격자를 클릭해 지도를 수정하세요.</div></div></div>
+ <div class="legend">
+  <span><i class="dot" style="background:#ffe4e6"></i>응급환자</span>
+  <span><i class="dot" style="background:#dcfce9"></i>병원</span>
+  <span><i class="dot" style="background:#526174"></i>통행 불가</span>
+  <span><i class="dot" style="background:#dceeff"></i>탐색 완료</span>
+  <span><i class="dot" style="background:#75d7b1"></i>최단 경로</span>
+ </div>
+ <div id="grid" aria-label="도시 도로 격자 지도"></div>
+ <div class="tools" aria-label="지도 편집 도구">
+  <button class="tool active" data-mode="start">🚑 환자 위치</button>
+  <button class="tool" data-mode="hospital">🏥 병원 추가</button>
+  <button class="tool" data-mode="wall">🚧 도로 차단</button>
+  <button class="tool" data-mode="erase">🧹 지우기</button>
+ </div>
+ <div class="sub">기본 지도는 10×10 격자입니다. 환자 위치는 1개, 병원은 여러 개 설정할 수 있습니다.</div>
+ <div class="actions">
+  <button class="primary" id="run">▶ BFS 전체 실행</button>
+  <button id="step">한 단계 진행</button>
+  <button id="auto">⏵ 자동 재생</button>
+  <button class="red" id="reset">초기화</button>
+  <button id="random">무작위 장애물</button>
+ </div>
+ <div class="stepbar"><span id="progress"></span></div>
+ <div class="status" id="status">환자 위치에서 시작해 인접한 도로를 차례대로 탐색합니다. 'BFS 전체 실행' 또는 '한 단계 진행'을 눌러보세요.</div>
+</section>
+<aside>
+ <section class="panel">
+  <h2>② 탐색 결과</h2>
+  <div class="stats">
+   <div class="stat"><b id="distance">-</b><span>이동 칸 수</span></div>
+   <div class="stat"><b id="visited">0</b><span>탐색한 칸</span></div>
+   <div class="stat"><b id="steps">0</b><span>진행 단계</span></div>
+  </div>
+  <div class="sub" id="result">아직 탐색을 실행하지 않았습니다.</div>
+ </section>
+ <section class="panel" style="margin-top:16px">
+  <h2>③ 알고리즘 진행 상황</h2>
+  <div class="sub" style="margin-bottom:9px">큐(Queue)는 다음에 탐색할 위치를 먼저 들어온 순서대로 보관합니다.</div>
+  <div id="queue" class="status">큐: 비어 있음</div>
+  <div style="height:12px"></div>
+  <div id="log" aria-live="polite"><div class="logline">시뮬레이터 준비 완료.</div><div class="logline">환자 위치와 병원 위치를 확인하세요.</div></div>
+ </section>
+ <section class="panel" style="margin-top:16px">
+  <h2>④ BFS 쉽게 이해하기</h2>
+  <div class="explain">
+   <ol>
+    <li><b>시작:</b> 응급환자가 있는 칸을 큐에 넣습니다.</li>
+    <li><b>방문:</b> 큐의 맨 앞 칸을 꺼내 확인합니다.</li>
+    <li><b>확장:</b> 상·하·좌·우의 이동 가능한 이웃 칸을 큐 뒤에 넣습니다.</li>
+    <li><b>종료:</b> 병원에 도착하면 탐색을 멈춥니다.</li>
+   </ol>
+   BFS는 가까운 칸부터 넓게 탐색하기 때문에 모든 이동 비용이 같을 때 최단 경로를 찾을 수 있습니다.
+  </div>
+  <div class="note"><b>현실과 시뮬레이션의 차이</b><br>이 모델은 격자형 도로, 상하좌우 이동, 동일한 이동 비용을 가정합니다. 실제 응급 이송에서는 교통량, 도로별 속도, 병상 및 진료 가능 여부 등을 추가로 고려해야 합니다.</div>
+ </section>
+</aside>
+</main>
+<script>
+const N=10, gridEl=document.getElementById('grid');
+const startDefault={r:1,c:1}, hospitalsDefault=[{r:8,c:8},{r:1,c:8}];
+let start={...startDefault}, hospitals=hospitalsDefault.map(x=>({...x})), walls=new Set();
+let mode='start', queue=[], visited=new Set(), parent=new Map(), path=[], current=null, done=false, found=null, stepCount=0, timer=null, initialized=false;
+const key=(r,c)=>`${r},${c}`, parse=k=>k.split(',').map(Number);
+const dirs=[[-1,0,'위'],[0,1,'오른쪽'],[1,0,'아래'],[0,-1,'왼쪽']];
+function addLog(html){const el=document.createElement('div');el.className='logline';el.innerHTML=html;const log=document.getElementById('log');log.appendChild(el);log.scrollTop=log.scrollHeight}
+function isHospital(k){return hospitals.some(h=>key(h.r,h.c)===k)}
+function draw(){
+ gridEl.innerHTML='';
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+  const k=key(r,c), el=document.createElement('div');el.className='cell';el.dataset.r=r;el.dataset.c=c;
+  if(walls.has(k))el.classList.add('wall');
+  if(visited.has(k))el.classList.add('visited');
+  if(path.includes(k))el.classList.add('path');
+  if(current===k)el.classList.add('current');
+  if(start.r===r&&start.c===c){el.className='cell start';el.innerHTML='<img src="img/ambulance.svg" alt="응급환자">'}
+  else if(isHospital(k)){el.className='cell hospital';el.innerHTML='<img src="img/hospital.svg" alt="병원">'}
+  else if(walls.has(k)){el.innerHTML='<span class="wallmark">✕</span>'}
+  else if(visited.has(k)||path.includes(k)){el.innerHTML='<span style="font-size:10px;color:#31556f">•</span>'}
+  el.title=`(${r+1}, ${c+1})`;
+  el.addEventListener('click',()=>editCell(r,c));gridEl.appendChild(el);
+ }
+ document.getElementById('visited').textContent=visited.size;
+ document.getElementById('steps').textContent=stepCount;
+ document.getElementById('distance').textContent=done&&found!==null?path.length-1:(done?'없음':'-');
+ document.getElementById('progress').style.width=(done?'100%':Math.min(95,stepCount*3)+'%');
+ document.getElementById('queue').textContent='큐: '+(queue.length?queue.map(k=>'('+parse(k).map(v=>v+1).join(',')+')').join(' → '):'비어 있음');
+}
+function editCell(r,c){
+ stopAuto();const k=key(r,c);
+ if(mode==='start'){if(isHospital(k)||walls.has(k))return;start={r,c}}
+ if(mode==='hospital'){if(k===key(start.r,start.c)||walls.has(k))return;if(!isHospital(k))hospitals.push({r,c})}
+ if(mode==='wall'){if(k===key(start.r,start.c)||isHospital(k))return;walls.has(k)?walls.delete(k):walls.add(k)}
+ if(mode==='erase'){if(k===key(start.r,start.c))return;if(isHospital(k))hospitals=hospitals.filter(h=>key(h.r,h.c)!==k);walls.delete(k)}
+ resetSearch(false);draw();
+}
+function resetSearch(log=true){
+ stopAuto();queue=[];visited=new Set();parent=new Map();path=[];current=null;done=false;found=null;stepCount=0;initialized=false;
+ document.getElementById('result').textContent='아직 탐색을 실행하지 않았습니다.';
+ document.getElementById('status').textContent='지도를 설정한 뒤 탐색을 시작하세요.';
+ document.getElementById('log').innerHTML='';if(log)addLog('지도가 초기화되었습니다.');
+ draw();
+}
+function initSearch(){
+ if(!hospitals.length){document.getElementById('status').textContent='병원을 하나 이상 추가해야 합니다.';return false}
+ const sk=key(start.r,start.c);queue=[sk];visited.add(sk);parent.set(sk,null);initialized=true;
+ addLog(`<strong>시작</strong> 환자 위치 (${start.r+1}, ${start.c+1})를 큐에 넣었습니다.`);
+ document.getElementById('status').textContent='환자 위치를 큐에 넣었습니다. 이제 주변 도로를 탐색합니다.';
+ draw();return true;
+}
+function oneStep(){
+ if(done)return;
+ if(!initialized&&!initSearch())return;
+ if(queue.length===0){done=true;finishNoPath();draw();return}
+ const k=queue.shift(),[r,c]=parse(k);current=k;stepCount++;
+ addLog(`<strong>STEP ${stepCount}</strong> (${r+1}, ${c+1}) 칸을 큐에서 꺼내 확인합니다.`);
+ if(isHospital(k)){found=k;done=true;buildPath(k);addLog(`<strong style="color:#7df0b4">병원 발견!</strong> 최단 경로를 완성했습니다.`);finishFound();draw();return}
+ let added=[];
+ for(const [dr,dc,dir] of dirs){
+  const nr=r+dr,nc=c+dc,nk=key(nr,nc);
+  if(nr<0||nr>=N||nc<0||nc>=N){addLog(`· ${dir}: 지도 밖이므로 제외`);continue}
+  if(walls.has(nk)){addLog(`· ${dir}: 도로가 차단되어 제외`);continue}
+  if(visited.has(nk)){addLog(`· ${dir}: 이미 방문한 칸이므로 제외`);continue}
+  visited.add(nk);parent.set(nk,k);queue.push(nk);added.push(`(${nr+1},${nc+1})`);
+ }
+ document.getElementById('status').textContent=added.length?`(${r+1}, ${c+1})에서 이동 가능한 ${added.length}개 칸을 큐에 추가했습니다.`:'주변에 새로 탐색할 수 있는 칸이 없습니다.';
+ draw();
+ if(queue.length===0){done=true;finishNoPath();draw()}
+}
+function buildPath(k){let p=[],cur=k;while(cur!==null){p.push(cur);cur=parent.get(cur)}path=p.reverse()}
+function finishFound(){
+ const [r,c]=parse(found),h=hospitals.find(x=>key(x.r,x.c)===found);
+ document.getElementById('result').innerHTML=`<b style="color:#087b4d">병원을 찾았습니다!</b><br>도착 병원: (${r+1}, ${c+1})<br>환자에서 병원까지 <b>${path.length-1}칸</b> 이동합니다.<br>경로: ${path.map(k=>'('+parse(k).map(v=>v+1).join(',')+')').join(' → ')}`;
+ document.getElementById('status').textContent='탐색 성공! 초록색 칸이 BFS가 찾은 최단 경로입니다.';
+ addLog(`<strong>결과</strong> 이동 거리 ${path.length-1}칸, 탐색 칸 ${visited.size}개`);
+}
+function finishNoPath(){
+ document.getElementById('distance').textContent='없음';
+ document.getElementById('result').innerHTML='<b style="color:#c73542">도달 가능한 병원이 없습니다.</b><br>차단된 도로를 제거하거나 병원 위치를 변경한 뒤 다시 시도해 보세요.';
+ document.getElementById('status').textContent='모든 도달 가능한 도로를 확인했지만 병원을 찾지 못했습니다.';
+ addLog('<strong style="color:#ff9ca5">탐색 종료</strong> 도달 가능한 병원이 없습니다.');
+}
+function stopAuto(){if(timer){clearInterval(timer);timer=null}document.getElementById('auto').textContent='⏵ 자동 재생'}
+function autoPlay(){if(timer){stopAuto();return}document.getElementById('auto').textContent='Ⅱ 일시정지';timer=setInterval(()=>{oneStep();if(done)stopAuto()},450)}
+document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode}));
+document.getElementById('run').addEventListener('click',()=>{stopAuto();if(!initialized&&!initSearch())return;while(!done)oneStep()});
+document.getElementById('step').addEventListener('click',()=>{stopAuto();oneStep()});
+document.getElementById('auto').addEventListener('click',autoPlay);
+document.getElementById('reset').addEventListener('click',()=>resetSearch(true));
+document.getElementById('random').addEventListener('click',()=>{stopAuto();walls.clear();for(let r=0;r<N;r++)for(let c=0;c<N;c++){let k=key(r,c);if(Math.random()<.17&&k!==key(start.r,start.c)&&!isHospital(k))walls.add(k)}resetSearch(false);addLog('무작위 도로 장애물을 생성했습니다.');draw()});
+draw();
+</script>
+</body>
+</html>
